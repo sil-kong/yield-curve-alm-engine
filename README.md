@@ -1,7 +1,8 @@
 # yield-curve-alm-engine
 
-A compact Python research lab for stylized yield-curve, fixed-income and
-asset-liability management analytics.
+This repository is a stylized ALM and fixed-income risk laboratory. It is
+designed to make the mechanics of yield-curve valuation, duration risk,
+key-rate sensitivities and surplus stress testing transparent and reproducible.
 
 This repository is designed as a portfolio-quality educational project. It uses
 only synthetic, hard-coded inputs in its base case and does not ingest market
@@ -22,9 +23,24 @@ The current implementation can:
 - price a stylized portfolio of fixed-rate bullet bonds;
 - generate a synthetic liability cash-flow profile;
 - compute present value, duration and convexity metrics;
+- compute key-rate PV01 and duration diagnostics;
+- compare asset and liability cash-flow timing gaps;
 - revalue assets and liabilities under deterministic rate shocks;
 - compare balance-sheet surplus across scenarios;
+- produce a compact ALM dashboard export;
 - export simple CSV reports and matplotlib charts.
+
+## CV / Portfolio Highlights
+
+- `src/` layout with editable installation through `pyproject.toml`.
+- Unit tests and a lightweight GitHub Actions test workflow.
+- Clear separation between curves, instruments, risk analytics and scripts.
+- Reproducible synthetic examples with optional CSV inputs.
+- ALM diagnostics covering surplus, duration gap, key-rate PV01 and cash-flow matching.
+- Explicit documentation of assumptions, data provenance and limitations.
+
+See [docs/methodology.md](docs/methodology.md) for the modelling conventions and
+limitations.
 
 ## Repository Structure
 
@@ -35,6 +51,8 @@ The current implementation can:
 │       └── tests.yml
 ├── LICENSE
 ├── README.md
+├── docs/
+│   └── methodology.md
 ├── pyproject.toml
 ├── requirements.txt
 ├── .gitignore
@@ -59,19 +77,25 @@ The current implementation can:
         │   └── liabilities.py
         ├── risk
         │   ├── __init__.py
+        │   ├── cashflow_matching.py
         │   ├── duration_convexity.py
         │   ├── immunization.py
+        │   ├── key_rate.py
         │   └── surplus.py
         └── scripts
             ├── common.py
             ├── __init__.py
+            ├── build_alm_dashboard.py
             ├── build_base_case.py
             ├── run_stress_tests.py
             └── plot_results.py
 └── tests/
+    ├── test_alm_dashboard.py
     ├── test_bonds.py
+    ├── test_cashflow_matching.py
     ├── test_curve.py
     ├── test_immunization.py
+    ├── test_key_rate.py
     ├── test_loaders.py
     └── test_surplus.py
 ```
@@ -168,6 +192,7 @@ python3 -m venv .venv
 .venv/bin/python -m pytest
 .venv/bin/python -m yield_curve_alm_engine.scripts.build_base_case
 .venv/bin/python -m yield_curve_alm_engine.scripts.run_stress_tests
+.venv/bin/python -m yield_curve_alm_engine.scripts.build_alm_dashboard
 .venv/bin/python -m yield_curve_alm_engine.scripts.plot_results
 ```
 
@@ -215,15 +240,21 @@ interest.
 
 The scripts generate CSV and PNG artifacts in `outputs/`:
 
+- `alm_dashboard_summary.csv`
+- `alm_dashboard.md`
 - `base_curve.csv`
 - `base_case_bonds.csv`
 - `base_case_liabilities.csv`
 - `base_case_summary.csv`
 - `stress_test_results.csv`
 - `bond_sensitivities.csv`
+- `key_rate_report.csv`
+- `cashflow_gap_report.csv`
 - `curve_scenarios.png`
 - `surplus_by_scenario.png`
 - `asset_liability_by_scenario.png`
+- `key_rate_pv01.png`
+- `cashflow_gap.png`
 
 ## Limitations
 
@@ -245,8 +276,8 @@ real balance-sheet decisions.
 
 Good next steps include:
 
-- add key-rate duration by maturity bucket;
 - add user-supplied liability cash-flow CSV input;
 - compare built-in and user-input portfolios in one report;
 - support additional liability shapes and scenario sets;
-- broaden tests around script entry points and invalid CSV cases.
+- broaden tests around script entry points and invalid CSV cases;
+- add a small command-line wrapper for common workflows.
