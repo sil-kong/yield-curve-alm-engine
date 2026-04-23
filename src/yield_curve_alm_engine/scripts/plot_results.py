@@ -180,10 +180,15 @@ def plot_key_rate_pv01(key_rate_report) -> None:
     fig.savefig(OUTPUTS / "key_rate_pv01.png", dpi=150)
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Plot ALM curve and surplus results.")
     add_input_arguments(parser)
-    return parser.parse_args()
+    parser.add_argument(
+        "--show",
+        action="store_true",
+        help="Display plots interactively after saving them.",
+    )
+    return parser.parse_args(argv)
 
 
 def main() -> None:
@@ -210,7 +215,12 @@ def main() -> None:
     plot_surplus_results(base_curve, bonds, liabilities)
     plot_cashflow_gap(cashflow_gap_report)
     plot_key_rate_pv01(key_rate_report)
-    plt.show()
+
+    print(f"Saved plots to: {OUTPUTS}")
+    if args.show:
+        plt.show()
+    else:
+        plt.close("all")
 
 
 if __name__ == "__main__":
