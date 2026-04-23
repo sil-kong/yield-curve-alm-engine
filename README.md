@@ -34,6 +34,10 @@ The current implementation can:
 ├── README.md
 ├── requirements.txt
 ├── .gitignore
+├── data/
+│   └── examples/
+│       ├── example_bond_portfolio.csv
+│       └── example_zero_curve.csv
 ├── outputs/
 │   └── .gitkeep
 └── src/
@@ -73,6 +77,10 @@ The base case uses internal synthetic data only:
 There is no Bloomberg, FRED, EIOPA, exchange, broker, accounting system or
 actuarial data ingestion in the current version. The numbers are intentionally
 illustrative and should not be interpreted as market observations.
+
+The project can also read user-supplied CSV files for the zero curve and bond
+portfolio. Those files are treated as external scenario inputs, not validated
+market data.
 
 ## Financial Methodology
 
@@ -146,6 +154,42 @@ python3 -m venv .venv
 The `requirements.txt` file is retained as a minimal runtime dependency list,
 but editable installation through `pyproject.toml` is the preferred development
 workflow.
+
+## User CSV Inputs
+
+The scripts can use the built-in synthetic inputs or user-provided CSV files.
+Example files are provided in `data/examples/`.
+
+```bash
+.venv/bin/python -m yield_curve_alm_engine.scripts.build_base_case \
+  --curve-csv data/examples/example_zero_curve.csv \
+  --bonds-csv data/examples/example_bond_portfolio.csv
+
+.venv/bin/python -m yield_curve_alm_engine.scripts.run_stress_tests \
+  --curve-csv data/examples/example_zero_curve.csv \
+  --bonds-csv data/examples/example_bond_portfolio.csv
+```
+
+Expected zero-curve CSV columns:
+
+| column | description |
+| --- | --- |
+| `maturity_years` | maturity in years, strictly positive |
+| `zero_rate` | continuously compounded annual zero rate in decimal form |
+
+Expected bond portfolio CSV columns:
+
+| column | description |
+| --- | --- |
+| `name` | bond label |
+| `face_value` | notional principal |
+| `coupon_rate` | annual coupon rate in decimal form |
+| `maturity_years` | maturity in years |
+| `coupon_frequency` | integer number of coupon payments per year |
+
+The CSV loader performs basic schema and numeric validation. It does not add
+market conventions such as day count, calendars, settlement dates or accrued
+interest.
 
 ## Example Outputs
 

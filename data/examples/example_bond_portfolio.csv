@@ -1,0 +1,6 @@
+name,face_value,coupon_rate,maturity_years,coupon_frequency
+Example Short Bond 2Y,2000000,0.021,2,2
+Example Medium Bond 7Y,1500000,0.028,7,2
+Example Long Bond 15Y,1200000,0.032,15,2
+Example Low Coupon 10Y,1000000,0.015,10,1
+Example High Coupon 20Y,800000,0.040,20,2
