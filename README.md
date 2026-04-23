@@ -136,11 +136,16 @@ From the repository root:
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-env PYTHONPATH=src .venv/bin/python src/yield_curve_alm_engine/scripts/build_base_case.py
-env PYTHONPATH=src .venv/bin/python src/yield_curve_alm_engine/scripts/run_stress_tests.py
-env PYTHONPATH=src .venv/bin/python src/yield_curve_alm_engine/scripts/plot_results.py
+.venv/bin/python -m pip install -e ".[dev]"
+.venv/bin/python -m pytest
+.venv/bin/python -m yield_curve_alm_engine.scripts.build_base_case
+.venv/bin/python -m yield_curve_alm_engine.scripts.run_stress_tests
+.venv/bin/python -m yield_curve_alm_engine.scripts.plot_results
 ```
+
+The `requirements.txt` file is retained as a minimal runtime dependency list,
+but editable installation through `pyproject.toml` is the preferred development
+workflow.
 
 ## Example Outputs
 
