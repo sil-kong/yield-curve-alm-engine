@@ -30,8 +30,12 @@ The current implementation can:
 
 ```text
 .
+├── .github/
+│   └── workflows/
+│       └── tests.yml
 ├── LICENSE
 ├── README.md
+├── pyproject.toml
 ├── requirements.txt
 ├── .gitignore
 ├── data/
@@ -44,6 +48,7 @@ The current implementation can:
     └── yield_curve_alm_engine
         ├── __init__.py
         ├── config.py
+        ├── loaders.py
         ├── curve
         │   ├── __init__.py
         │   ├── base_curve.py
@@ -55,12 +60,20 @@ The current implementation can:
         ├── risk
         │   ├── __init__.py
         │   ├── duration_convexity.py
+        │   ├── immunization.py
         │   └── surplus.py
         └── scripts
+            ├── common.py
             ├── __init__.py
             ├── build_base_case.py
             ├── run_stress_tests.py
             └── plot_results.py
+└── tests/
+    ├── test_bonds.py
+    ├── test_curve.py
+    ├── test_immunization.py
+    ├── test_loaders.py
+    └── test_surplus.py
 ```
 
 ## Data Provenance
@@ -232,8 +245,8 @@ real balance-sheet decisions.
 
 Good next steps include:
 
-- add unit tests for curve interpolation, bond pricing and stress results;
-- add modern packaging metadata with editable installation;
-- add CSV input templates for custom curves and portfolios;
 - add key-rate duration by maturity bucket;
-- support additional liability shapes and scenario sets.
+- add user-supplied liability cash-flow CSV input;
+- compare built-in and user-input portfolios in one report;
+- support additional liability shapes and scenario sets;
+- broaden tests around script entry points and invalid CSV cases.
