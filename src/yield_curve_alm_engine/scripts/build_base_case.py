@@ -2,20 +2,19 @@
 
 from __future__ import annotations
 
+import argparse
+
 import pandas as pd
 
 from yield_curve_alm_engine.config import OUTPUTS
-from yield_curve_alm_engine.curve.base_curve import create_base_zero_curve
-from yield_curve_alm_engine.instruments.bonds import (
-    build_sample_bond_portfolio,
-    price_bond_portfolio,
-)
+from yield_curve_alm_engine.instruments.bonds import price_bond_portfolio
 from yield_curve_alm_engine.instruments.liabilities import (
     create_stylized_liability_schedule,
     liability_risk_metrics,
     liability_value_table,
 )
 from yield_curve_alm_engine.risk.surplus import compute_balance_sheet
+from yield_curve_alm_engine.scripts.common import add_input_arguments, load_bonds, load_curve
 
 
 def _currency(value: float) -> str:
@@ -27,9 +26,16 @@ def _weighted_metric(table: pd.DataFrame, metric: str) -> float:
     return float((weights * table[metric]).sum())
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Build the ALM base case.")
+    add_input_arguments(parser)
+    return parser.parse_args()
+
+
 def main() -> None:
-    curve = create_base_zero_curve()
-    bonds = build_sample_bond_portfolio()
+    args = parse_args()
+    curve = load_curve(args.curve_csv)
+    bonds = load_bonds(args.bonds_csv)
     liabilities = create_stylized_liability_schedule()
 
     curve_table = curve.to_frame()

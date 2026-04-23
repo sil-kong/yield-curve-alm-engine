@@ -2,19 +2,21 @@
 
 from __future__ import annotations
 
+import argparse
+
 import matplotlib.pyplot as plt
 
 from yield_curve_alm_engine.config import OUTPUTS
-from yield_curve_alm_engine.curve.base_curve import create_base_zero_curve
+from yield_curve_alm_engine.curve.base_curve import ZeroCurve
 from yield_curve_alm_engine.curve.shocks import get_stress_scenarios
-from yield_curve_alm_engine.instruments.bonds import build_sample_bond_portfolio
+from yield_curve_alm_engine.instruments.bonds import Bond
 from yield_curve_alm_engine.instruments.liabilities import create_stylized_liability_schedule
 from yield_curve_alm_engine.risk.surplus import run_surplus_scenarios
+from yield_curve_alm_engine.scripts.common import add_input_arguments, load_bonds, load_curve
 
 
-def plot_curve_scenarios() -> None:
+def plot_curve_scenarios(base_curve: ZeroCurve) -> None:
     """Plot base and stressed zero curves."""
-    base_curve = create_base_zero_curve()
     scenarios = get_stress_scenarios()
 
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -48,10 +50,8 @@ def plot_curve_scenarios() -> None:
     fig.savefig(OUTPUTS / "curve_scenarios.png", dpi=150)
 
 
-def plot_surplus_results() -> None:
+def plot_surplus_results(base_curve: ZeroCurve, bonds: list[Bond]) -> None:
     """Plot surplus, asset value and liability value by scenario."""
-    base_curve = create_base_zero_curve()
-    bonds = build_sample_bond_portfolio()
     liabilities = create_stylized_liability_schedule()
     scenarios = get_stress_scenarios()
     stress_results = run_surplus_scenarios(bonds, liabilities, base_curve, scenarios)
@@ -96,9 +96,18 @@ def plot_surplus_results() -> None:
     fig2.savefig(OUTPUTS / "asset_liability_by_scenario.png", dpi=150)
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Plot ALM curve and surplus results.")
+    add_input_arguments(parser)
+    return parser.parse_args()
+
+
 def main() -> None:
-    plot_curve_scenarios()
-    plot_surplus_results()
+    args = parse_args()
+    base_curve = load_curve(args.curve_csv)
+    bonds = load_bonds(args.bonds_csv)
+    plot_curve_scenarios(base_curve)
+    plot_surplus_results(base_curve, bonds)
     plt.show()
 
 

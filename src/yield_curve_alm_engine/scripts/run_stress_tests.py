@@ -2,20 +2,28 @@
 
 from __future__ import annotations
 
+import argparse
+
 from yield_curve_alm_engine.config import OUTPUTS
-from yield_curve_alm_engine.curve.base_curve import create_base_zero_curve
 from yield_curve_alm_engine.curve.shocks import get_stress_scenarios
-from yield_curve_alm_engine.instruments.bonds import build_sample_bond_portfolio
 from yield_curve_alm_engine.instruments.liabilities import create_stylized_liability_schedule
 from yield_curve_alm_engine.risk.surplus import (
     compare_bond_sensitivities,
     run_surplus_scenarios,
 )
+from yield_curve_alm_engine.scripts.common import add_input_arguments, load_bonds, load_curve
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run deterministic ALM stress tests.")
+    add_input_arguments(parser)
+    return parser.parse_args()
 
 
 def main() -> None:
-    base_curve = create_base_zero_curve()
-    bonds = build_sample_bond_portfolio()
+    args = parse_args()
+    base_curve = load_curve(args.curve_csv)
+    bonds = load_bonds(args.bonds_csv)
     liabilities = create_stylized_liability_schedule()
     scenarios = get_stress_scenarios()
 
