@@ -23,6 +23,7 @@ dist/
 
 # Local output artifacts
 outputs/*.csv
+outputs/*.md
 outputs/*.png
 outputs/*.pdf
 !outputs/.gitkeep
