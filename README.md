@@ -1,30 +1,36 @@
 # yield-curve-alm-engine
 
-A clean, modular Python laboratory for stylized yield-curve, fixed-income and
+A compact Python research lab for stylized yield-curve, fixed-income and
 asset-liability management analytics.
 
-This project is intentionally educational and research-oriented. It is not an
-industrial ALM engine, a regulatory model, or a production valuation platform.
-Its purpose is to demonstrate sound Python structure and core quantitative
-finance concepts in a compact, readable codebase.
+This repository is designed as a portfolio-quality educational project. It uses
+only synthetic, hard-coded inputs in its base case and does not ingest market
+data. The goal is to show clear Python structure and core ALM mechanics, not to
+present an industrial ALM engine, a regulatory model or a production valuation
+platform.
 
 ## Motivation
 
-ALM work connects market curves, asset cash flows, liability cash flows and
-balance-sheet surplus. This repository builds a small but serious framework for
-exploring those links with synthetic data:
+ALM connects market curves, asset cash flows, liability cash flows and
+balance-sheet surplus. This project keeps that setup deliberately small and
+transparent so the calculations can be read, tested and extended without hiding
+behind external data feeds or heavy frameworks.
 
-- build and stress a zero-coupon yield curve;
-- price a portfolio of fixed-rate bonds;
-- value stylized liability outflows;
-- compute duration and convexity;
-- compare surplus under deterministic rate scenarios;
-- generate CSV outputs and clear matplotlib charts.
+The current implementation can:
+
+- build a synthetic continuously compounded zero-coupon curve;
+- price a stylized portfolio of fixed-rate bullet bonds;
+- generate a synthetic liability cash-flow profile;
+- compute present value, duration and convexity metrics;
+- revalue assets and liabilities under deterministic rate shocks;
+- compare balance-sheet surplus across scenarios;
+- export simple CSV reports and matplotlib charts.
 
 ## Repository Structure
 
 ```text
 .
+├── LICENSE
 ├── README.md
 ├── requirements.txt
 ├── .gitignore
@@ -52,6 +58,21 @@ exploring those links with synthetic data:
             ├── run_stress_tests.py
             └── plot_results.py
 ```
+
+## Data Provenance
+
+The base case uses internal synthetic data only:
+
+- zero curve: hard-coded maturities and zero rates in
+  `src/yield_curve_alm_engine/curve/base_curve.py`;
+- bond portfolio: hard-coded fixed-rate bond examples in
+  `src/yield_curve_alm_engine/instruments/bonds.py`;
+- liabilities: synthetic annual cash flows generated in
+  `src/yield_curve_alm_engine/instruments/liabilities.py`.
+
+There is no Bloomberg, FRED, EIOPA, exchange, broker, accounting system or
+actuarial data ingestion in the current version. The numbers are intentionally
+illustrative and should not be interpreted as market observations.
 
 ## Financial Methodology
 
@@ -93,8 +114,8 @@ The core ALM metric is:
 surplus = asset market value - liability present value
 ```
 
-Asset market value is the sum of the bond prices. Liability present value is the
-discounted value of the future liability cash flows.
+Asset market value is the sum of bond prices. Liability present value is the
+discounted value of future liability cash flows.
 
 ### Stress Tests
 
@@ -137,7 +158,7 @@ The scripts generate CSV and PNG artifacts in `outputs/`:
 
 ## Limitations
 
-This is a stylized educational engine. It deliberately omits:
+This is a stylized educational and research lab. It deliberately omits:
 
 - market data ingestion;
 - bootstrapping from traded instruments;
@@ -147,16 +168,17 @@ This is a stylized educational engine. It deliberately omits:
 - production-grade day count conventions, calendars and accrued interest;
 - stochastic interest-rate models.
 
-The goal is conceptual clarity and portfolio-quality engineering, not fake
-market realism.
+The goal is conceptual clarity, reproducible examples and readable engineering.
+The project should not be used for trading, reporting, regulatory submissions or
+real balance-sheet decisions.
 
 ## Future Extensions
 
 Good next steps include:
 
 - add unit tests for curve interpolation, bond pricing and stress results;
+- add modern packaging metadata with editable installation;
+- add CSV input templates for custom curves and portfolios;
 - add key-rate duration by maturity bucket;
 - support additional liability shapes and scenario sets;
-- add simple immunization diagnostics;
-- add CSV input templates for custom portfolios;
-- include a small command-line interface for scenario selection.
+- add simple immunization diagnostics.
