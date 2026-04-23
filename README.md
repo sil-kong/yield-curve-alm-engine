@@ -114,6 +114,13 @@ The risk module computes Macaulay duration, modified duration and convexity from
 generic dated cash flows. Under continuous compounding, modified duration equals
 Macaulay duration for a parallel shift in zero rates.
 
+### Duration Gap Diagnostic
+
+The base-case summary includes a simple first-order duration-gap diagnostic. It
+approximates the surplus impact of a 1 bp parallel rate increase using asset and
+liability modified durations. This is a reading aid for ALM intuition, not a
+hedging recommendation.
+
 ### Surplus
 
 The core ALM metric is:
@@ -229,5 +236,4 @@ Good next steps include:
 - add modern packaging metadata with editable installation;
 - add CSV input templates for custom curves and portfolios;
 - add key-rate duration by maturity bucket;
-- support additional liability shapes and scenario sets;
-- add simple immunization diagnostics.
+- support additional liability shapes and scenario sets.
