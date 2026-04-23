@@ -11,8 +11,15 @@ from yield_curve_alm_engine.curve.base_curve import ZeroCurve
 from yield_curve_alm_engine.curve.shocks import get_stress_scenarios
 from yield_curve_alm_engine.instruments.bonds import Bond
 from yield_curve_alm_engine.instruments.liabilities import create_stylized_liability_schedule
+from yield_curve_alm_engine.risk.cashflow_matching import build_cashflow_gap_report
+from yield_curve_alm_engine.risk.key_rate import compute_asset_liability_key_rate_report
 from yield_curve_alm_engine.risk.surplus import run_surplus_scenarios
-from yield_curve_alm_engine.scripts.common import add_input_arguments, load_bonds, load_curve
+from yield_curve_alm_engine.scripts.common import (
+    add_input_arguments,
+    collect_asset_cash_flows,
+    load_bonds,
+    load_curve,
+)
 
 
 def plot_curve_scenarios(base_curve: ZeroCurve) -> None:
@@ -50,9 +57,8 @@ def plot_curve_scenarios(base_curve: ZeroCurve) -> None:
     fig.savefig(OUTPUTS / "curve_scenarios.png", dpi=150)
 
 
-def plot_surplus_results(base_curve: ZeroCurve, bonds: list[Bond]) -> None:
+def plot_surplus_results(base_curve: ZeroCurve, bonds: list[Bond], liabilities) -> None:
     """Plot surplus, asset value and liability value by scenario."""
-    liabilities = create_stylized_liability_schedule()
     scenarios = get_stress_scenarios()
     stress_results = run_surplus_scenarios(bonds, liabilities, base_curve, scenarios)
 
@@ -96,6 +102,84 @@ def plot_surplus_results(base_curve: ZeroCurve, bonds: list[Bond]) -> None:
     fig2.savefig(OUTPUTS / "asset_liability_by_scenario.png", dpi=150)
 
 
+def plot_cashflow_gap(cashflow_gap_report) -> None:
+    """Plot annual asset, liability and net cash-flow gaps."""
+    fig, ax = plt.subplots(figsize=(11, 6))
+    x_positions = range(len(cashflow_gap_report))
+    width = 0.28
+
+    ax.bar(
+        [x - width for x in x_positions],
+        cashflow_gap_report["asset_cash_flow"] / 1_000_000.0,
+        width=width,
+        label="Assets",
+        color="#4C78A8",
+    )
+    ax.bar(
+        x_positions,
+        cashflow_gap_report["liability_cash_flow"] / 1_000_000.0,
+        width=width,
+        label="Liabilities",
+        color="#F58518",
+    )
+    ax.bar(
+        [x + width for x in x_positions],
+        cashflow_gap_report["net_cash_flow"] / 1_000_000.0,
+        width=width,
+        label="Net",
+        color="#54A24B",
+    )
+    ax.axhline(0.0, color="black", linewidth=0.9)
+    ax.set_title("Annual Asset/Liability Cash-Flow Gap")
+    ax.set_xlabel("Bucket end year")
+    ax.set_ylabel("Cash flow (millions)")
+    ax.set_xticks(list(x_positions)[::2])
+    ax.set_xticklabels(cashflow_gap_report["bucket_end"].iloc[::2].astype(int))
+    ax.grid(True, axis="y", alpha=0.30)
+    ax.legend(frameon=False)
+    fig.tight_layout()
+    fig.savefig(OUTPUTS / "cashflow_gap.png", dpi=150)
+
+
+def plot_key_rate_pv01(key_rate_report) -> None:
+    """Plot asset, liability and surplus key-rate PV01 by maturity."""
+    fig, ax = plt.subplots(figsize=(10, 6))
+    x_positions = range(len(key_rate_report))
+    width = 0.26
+
+    ax.bar(
+        [x - width for x in x_positions],
+        key_rate_report["asset_pv01"],
+        width=width,
+        label="Asset PV01",
+        color="#4C78A8",
+    )
+    ax.bar(
+        x_positions,
+        key_rate_report["liability_pv01"],
+        width=width,
+        label="Liability PV01",
+        color="#F58518",
+    )
+    ax.bar(
+        [x + width for x in x_positions],
+        key_rate_report["surplus_pv01"],
+        width=width,
+        label="Surplus PV01",
+        color="#54A24B",
+    )
+    ax.axhline(0.0, color="black", linewidth=0.9)
+    ax.set_title("Key-Rate PV01 by Maturity Bucket")
+    ax.set_xlabel("Key maturity (years)")
+    ax.set_ylabel("PV change for +1 bp")
+    ax.set_xticks(list(x_positions))
+    ax.set_xticklabels(key_rate_report["key_maturity"].map(lambda value: f"{value:g}"))
+    ax.grid(True, axis="y", alpha=0.30)
+    ax.legend(frameon=False)
+    fig.tight_layout()
+    fig.savefig(OUTPUTS / "key_rate_pv01.png", dpi=150)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Plot ALM curve and surplus results.")
     add_input_arguments(parser)
@@ -106,8 +190,26 @@ def main() -> None:
     args = parse_args()
     base_curve = load_curve(args.curve_csv)
     bonds = load_bonds(args.bonds_csv)
+    liabilities = create_stylized_liability_schedule()
+    asset_cash_flows = collect_asset_cash_flows(bonds)
+    key_rate_report = compute_asset_liability_key_rate_report(
+        asset_cash_flows,
+        liabilities,
+        base_curve,
+        key_maturities=[1.0, 2.0, 5.0, 10.0, 20.0, 30.0],
+        width=2.0,
+    )
+    cashflow_gap_report = build_cashflow_gap_report(
+        asset_cash_flows,
+        liabilities,
+        bucket_size=1.0,
+        horizon=30.0,
+    )
+
     plot_curve_scenarios(base_curve)
-    plot_surplus_results(base_curve, bonds)
+    plot_surplus_results(base_curve, bonds, liabilities)
+    plot_cashflow_gap(cashflow_gap_report)
+    plot_key_rate_pv01(key_rate_report)
     plt.show()
 
 

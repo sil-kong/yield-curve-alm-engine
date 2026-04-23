@@ -20,7 +20,12 @@ from yield_curve_alm_engine.risk.immunization import (
 )
 from yield_curve_alm_engine.risk.key_rate import compute_asset_liability_key_rate_report
 from yield_curve_alm_engine.risk.surplus import compute_balance_sheet
-from yield_curve_alm_engine.scripts.common import add_input_arguments, load_bonds, load_curve
+from yield_curve_alm_engine.scripts.common import (
+    add_input_arguments,
+    collect_asset_cash_flows,
+    load_bonds,
+    load_curve,
+)
 
 
 def _currency(value: float) -> str:
@@ -32,11 +37,6 @@ def _weighted_metric(table: pd.DataFrame, metric: str) -> float:
     return float((weights * table[metric]).sum())
 
 
-def _asset_cash_flows(bonds: list[Bond]) -> pd.DataFrame:
-    frames = [bond.cash_flows().loc[:, ["time_years", "cash_flow"]] for bond in bonds]
-    return pd.concat(frames, ignore_index=True)
-
-
 def build_dashboard_tables(
     curve: ZeroCurve,
     bonds: list[Bond],
@@ -46,7 +46,7 @@ def build_dashboard_tables(
     bond_table = price_bond_portfolio(bonds, curve)
     liability_metrics = liability_risk_metrics(liabilities, curve)
     balance_sheet = compute_balance_sheet(bonds, liabilities, curve, scenario="base")
-    asset_cash_flows = _asset_cash_flows(bonds)
+    asset_cash_flows = collect_asset_cash_flows(bonds)
 
     asset_modified_duration = _weighted_metric(bond_table, "modified_duration")
     liability_modified_duration = liability_metrics["modified_duration"]
