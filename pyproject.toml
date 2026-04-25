@@ -33,6 +33,14 @@ dev = [
     "pytest",
 ]
 
+[project.scripts]
+yield-curve-build-base = "yield_curve_alm_engine.scripts.build_base_case:main"
+yield-curve-run-stress = "yield_curve_alm_engine.scripts.run_stress_tests:main"
+yield-curve-build-dashboard = "yield_curve_alm_engine.scripts.build_alm_dashboard:main"
+yield-curve-plot-results = "yield_curve_alm_engine.scripts.plot_results:main"
+yield-curve-fetch-ecb = "yield_curve_alm_engine.scripts.fetch_ecb_curve:main"
+yield-curve-generate-report = "yield_curve_alm_engine.scripts.generate_report:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
