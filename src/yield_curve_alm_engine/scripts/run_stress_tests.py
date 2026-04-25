@@ -18,10 +18,10 @@ from yield_curve_alm_engine.scripts.common import (
 )
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run deterministic ALM stress tests.")
     add_input_arguments(parser)
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def main() -> None:

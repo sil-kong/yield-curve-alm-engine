@@ -200,10 +200,10 @@ def build_dashboard_markdown(summary: pd.DataFrame) -> str:
     )
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build the ALM dashboard outputs.")
     add_input_arguments(parser)
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def main() -> None:
