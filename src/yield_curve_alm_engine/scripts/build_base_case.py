@@ -10,7 +10,11 @@ from yield_curve_alm_engine.config import OUTPUTS
 from yield_curve_alm_engine.instruments.bonds import price_bond_portfolio
 from yield_curve_alm_engine.instruments.liabilities import liability_risk_metrics, liability_value_table
 from yield_curve_alm_engine.risk.immunization import duration_gap_diagnostic
-from yield_curve_alm_engine.risk.surplus import compute_balance_sheet
+from yield_curve_alm_engine.risk.curve_analytics import compute_curve_analytics
+from yield_curve_alm_engine.risk.surplus import (
+    compute_balance_sheet,
+    parallel_surplus_shock_comparison,
+)
 from yield_curve_alm_engine.scripts.common import (
     add_input_arguments,
     load_bonds,
@@ -45,6 +49,8 @@ def main() -> None:
     liability_table = liability_value_table(liabilities, curve)
     balance_sheet = compute_balance_sheet(bonds, liabilities, curve, scenario="base")
     liability_metrics = liability_risk_metrics(liabilities, curve)
+    curve_analytics = compute_curve_analytics(curve)
+    shock_comparison = parallel_surplus_shock_comparison(bonds, liabilities, curve)
 
     asset_macaulay_duration = _weighted_metric(bond_table, "macaulay_duration")
     asset_modified_duration = _weighted_metric(bond_table, "modified_duration")
@@ -64,6 +70,9 @@ def main() -> None:
         "liability_macaulay_duration": liability_metrics["macaulay_duration"],
         "liability_modified_duration": liability_metrics["modified_duration"],
         "liability_convexity": liability_metrics["convexity"],
+        "parallel_1bp_exact_surplus_change": shock_comparison["exact_surplus_change"],
+        "parallel_1bp_estimated_surplus_change": shock_comparison["estimated_surplus_change"],
+        "parallel_1bp_estimate_error": shock_comparison["estimate_error"],
         **diagnostic,
     }
     summary_table = pd.DataFrame([summary])
@@ -72,6 +81,7 @@ def main() -> None:
     bond_table.to_csv(OUTPUTS / "base_case_bonds.csv", index=False)
     liability_table.to_csv(OUTPUTS / "base_case_liabilities.csv", index=False)
     summary_table.to_csv(OUTPUTS / "base_case_summary.csv", index=False)
+    curve_analytics.to_csv(OUTPUTS / "base_case_curve_analytics.csv", index=False)
 
     print("\nBase Case Balance Sheet")
     print("-----------------------")
@@ -80,6 +90,7 @@ def main() -> None:
     print(f"Surplus            : {_currency(float(balance_sheet['surplus']))}")
     print(f"Duration gap       : {diagnostic['duration_gap_years']:,.2f} years")
     print(f"Surplus +1bp approx: {diagnostic['surplus_change_per_1bp_up']:,.0f}")
+    print(f"Surplus +1bp exact : {shock_comparison['exact_surplus_change']:,.0f}")
     print()
 
     display_columns = [

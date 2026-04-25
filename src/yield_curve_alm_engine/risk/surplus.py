@@ -9,7 +9,11 @@ import pandas as pd
 
 from yield_curve_alm_engine.curve.base_curve import ZeroCurve
 from yield_curve_alm_engine.instruments.bonds import Bond, price_bond, price_bond_portfolio
-from yield_curve_alm_engine.instruments.liabilities import liability_present_value
+from yield_curve_alm_engine.instruments.liabilities import (
+    liability_present_value,
+    liability_risk_metrics,
+)
+from yield_curve_alm_engine.risk.immunization import estimate_parallel_surplus_impact
 
 
 def asset_market_value(bonds: list[Bond], curve: ZeroCurve) -> float:
@@ -84,6 +88,64 @@ def run_surplus_scenarios(
         rows.append(add_base_comparison(scenario_result, base_result))
 
     return pd.DataFrame(rows)
+
+
+def _weighted_metric(table: pd.DataFrame, metric: str) -> float:
+    weights = table["price"] / table["price"].sum()
+    return float((weights * table[metric]).sum())
+
+
+def parallel_surplus_shock_comparison(
+    bonds: list[Bond],
+    liabilities: pd.DataFrame,
+    curve: ZeroCurve,
+    shock_size: float = 0.0001,
+) -> dict[str, float]:
+    """Compare exact surplus revaluation with a first-order duration estimate.
+
+    The shock is a parallel shift in continuously compounded zero rates. This
+    helper is a base-case diagnostic, not a hedge optimizer or a replacement
+    for full scenario analysis.
+    """
+    if not np.isfinite(shock_size) or np.isclose(shock_size, 0.0):
+        raise ValueError("shock_size must be a finite non-zero rate shift.")
+
+    base = compute_balance_sheet(bonds, liabilities, curve, scenario="base")
+    shocked_curve = curve.with_zero_rates(
+        curve.zero_rates + shock_size,
+        name=f"parallel_{shock_size * 10_000:g}bp",
+    )
+    shocked = compute_balance_sheet(bonds, liabilities, shocked_curve, scenario="parallel")
+
+    bond_table = price_bond_portfolio(bonds, curve)
+    liability_metrics = liability_risk_metrics(liabilities, curve)
+    asset_duration = _weighted_metric(bond_table, "modified_duration")
+    liability_duration = float(liability_metrics["modified_duration"])
+
+    estimated_surplus_change = estimate_parallel_surplus_impact(
+        asset_value=float(base["asset_value"]),
+        liability_value=float(base["liability_value"]),
+        asset_duration=asset_duration,
+        liability_duration=liability_duration,
+        shock_size=shock_size,
+    )
+    exact_surplus_change = float(shocked["surplus"]) - float(base["surplus"])
+
+    return {
+        "parallel_shock_bps": shock_size * 10_000.0,
+        "base_asset_value": float(base["asset_value"]),
+        "base_liability_value": float(base["liability_value"]),
+        "base_surplus": float(base["surplus"]),
+        "shocked_asset_value": float(shocked["asset_value"]),
+        "shocked_liability_value": float(shocked["liability_value"]),
+        "shocked_surplus": float(shocked["surplus"]),
+        "exact_asset_change": float(shocked["asset_value"]) - float(base["asset_value"]),
+        "exact_liability_change": float(shocked["liability_value"])
+        - float(base["liability_value"]),
+        "exact_surplus_change": exact_surplus_change,
+        "estimated_surplus_change": estimated_surplus_change,
+        "estimate_error": estimated_surplus_change - exact_surplus_change,
+    }
 
 
 def compare_bond_sensitivities(
