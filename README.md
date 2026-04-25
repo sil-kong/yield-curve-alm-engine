@@ -1,30 +1,73 @@
 # yield-curve-alm-engine
 
-This repository is a stylized ALM and fixed-income risk laboratory. It is
-designed to make the mechanics of yield-curve valuation, duration risk,
-key-rate sensitivities and surplus stress testing transparent and reproducible.
+A fixed-income ALM analytics engine that transforms public ECB yield curves and
+local cash-flow inputs into bond valuation, liability present value, duration,
+convexity, key-rate PV01, surplus stress testing, curve-shape diagnostics and
+reproducible Markdown reports.
 
-This repository is designed as a portfolio-quality educational project. Its
-base case uses synthetic, hard-coded inputs, and it also includes an optional
-ECB public yield-curve fetcher that writes a normalized local CSV. The ALM
-valuation scripts consume local CSV files and do not depend on live internet.
-The goal is to show clear Python structure and core ALM mechanics, not to
-present an industrial ALM engine, an EIOPA-style regulatory implementation, a
-production valuation platform or a market data system.
+ECB curve data is fetched once into normalized local CSV files. All valuation,
+stress testing, plotting and reporting scripts then run offline from local
+inputs. Synthetic curve, asset and liability examples remain available as
+fallback/demo fixtures, but the intended workflow is:
+
+```text
+ECB/public yield curve + local asset/liability cash-flow inputs
+-> zero-curve analytics
+-> valuation
+-> duration / convexity
+-> key-rate PV01
+-> surplus stress testing
+-> forward/slope/curvature diagnostics
+-> professional Markdown report and figures
+```
+
+The project is a research/portfolio-grade prototype for fixed-income ALM and
+curve-risk analytics. It is not an EIOPA-style regulatory implementation, a
+trading system, a production valuation platform or a market data system.
+
+See [docs/sample_alm_report.md](docs/sample_alm_report.md) for a
+recruiter-readable example output.
+
+## Recruiter Quick View
+
+- Field: fixed-income ALM / curve risk / actuarial finance.
+- Data workflow: ECB/public curve fetch -> normalized CSV -> offline ALM analytics.
+- Core modelling: zero-curve discounting, fixed-rate bond cash flows, liability PV, duration, convexity, key-rate PV01, surplus stress testing.
+- Quant diagnostics: forward rates, 2Y-10Y slope, 2Y-5Y-10Y curvature, local curve shocks.
+- Engineering: Python package, installable CLI, pytest suite, GitHub Actions, reproducible CSV/Markdown outputs.
+- Scope: professional-style research engine; not a production regulatory model.
+
+## What Public Yield Curves Provide vs What This Engine Adds
+
+| Layer | Public yield-curve dashboard | This engine |
+|---|---:|---:|
+| Yield curve observations | yes | fetches and normalizes |
+| Reproducible local curve CSV | no | yes |
+| Discount factors | derived | yes |
+| Forward rates | no / limited | yes |
+| Bond cash-flow valuation | no | yes |
+| Liability present value | no | yes |
+| Asset-liability surplus | no | yes |
+| Duration and convexity | no | yes |
+| Key-rate PV01 | no | yes |
+| Curve slope / curvature diagnostics | no | yes |
+| Stress scenarios | no | yes |
+| Markdown ALM report | no | yes |
 
 ## Motivation
 
 ALM connects market curves, asset cash flows, liability cash flows and
-balance-sheet surplus. This project keeps that setup deliberately small and
-transparent so the calculations can be read, tested and extended without hiding
-behind external data feeds or heavy frameworks.
+balance-sheet surplus. This project keeps that setup transparent so the
+calculations can be read, tested and extended without hiding behind external
+data feeds or heavy frameworks.
 
 The current implementation can:
 
-- build a synthetic continuously compounded zero-coupon curve;
 - fetch public ECB euro area spot yield curves into reproducible local CSVs;
+- load local zero-curve, bond portfolio and liability cash-flow CSV files;
+- compute discount factors and continuous forward-rate diagnostics;
 - price a stylized portfolio of fixed-rate bullet bonds;
-- generate a synthetic liability cash-flow profile;
+- value liability cash-flow profiles;
 - compute present value, duration and convexity metrics;
 - compute key-rate PV01 and duration diagnostics;
 - compare asset and liability cash-flow timing gaps;
@@ -59,8 +102,14 @@ figures workflow.
 ├── README.md
 ├── docs/
 │   ├── data_sources.md
+│   ├── figures/
+│   │   ├── cashflow_gap.png
+│   │   ├── curve_scenarios.png
+│   │   ├── key_rate_pv01.png
+│   │   └── surplus_by_scenario.png
 │   ├── methodology.md
-│   └── reporting_workflow.md
+│   ├── reporting_workflow.md
+│   └── sample_alm_report.md
 ├── pyproject.toml
 ├── requirements.txt
 ├── .gitignore
@@ -84,6 +133,7 @@ figures workflow.
         ├── loaders.py
         ├── curve
         │   ├── __init__.py
+        │   ├── analytics.py
         │   ├── base_curve.py
         │   └── shocks.py
         ├── instruments
@@ -119,12 +169,17 @@ figures workflow.
     ├── test_immunization.py
     ├── test_key_rate.py
     ├── test_loaders.py
+    ├── test_plot_results.py
     └── test_surplus.py
 ```
 
 ## Data Provenance
 
-The base case uses internal synthetic data only:
+The preferred curve workflow uses public ECB euro area spot yield curves fetched
+into normalized local CSV files. Valuation scripts do not call the ECB API
+directly; they consume local files through `--curve-csv`.
+
+Synthetic fallback data remains available for demos and tests:
 
 - zero curve: hard-coded maturities and zero rates in
   `src/yield_curve_alm_engine/curve/base_curve.py`;
@@ -132,11 +187,6 @@ The base case uses internal synthetic data only:
   `src/yield_curve_alm_engine/instruments/bonds.py`;
 - liabilities: synthetic annual cash flows generated in
   `src/yield_curve_alm_engine/instruments/liabilities.py`.
-
-The optional ECB fetcher downloads public euro area yield-curve spot rates and
-writes a local normalized CSV. This is the only live internet workflow in the
-project. The valuation scripts then consume the saved CSV through `--curve-csv`
-and can be run offline.
 
 There is no Bloomberg, FRED, broker, accounting system or actuarial data
 ingestion. The project is not an EIOPA regulatory ALM implementation and does
@@ -158,6 +208,9 @@ DF(t) = exp(-r(t) * t)
 ```
 
 Flat extrapolation is used outside the quoted maturity range.
+
+Curve analytics include discount factors, continuous forward rates, 2Y-10Y
+slope, 5Y-30Y slope and 2Y-5Y-10Y curvature.
 
 ### Bond Pricing
 
@@ -228,6 +281,13 @@ The `requirements.txt` file is retained as a minimal runtime dependency list,
 but editable installation through `pyproject.toml` is the preferred development
 workflow.
 
+## Quality Checks
+
+```bash
+python -m pytest
+python -m compileall src
+```
+
 After editable installation, these console commands are also available:
 
 ```bash
@@ -297,9 +357,21 @@ yield-curve-run-stress \
   --bonds-csv data/examples/portfolios/example_bond_portfolio.csv \
   --liabilities-csv data/examples/liabilities/example_liability_cashflows.csv
 
-yield-curve-build-dashboard
-yield-curve-plot-results
-yield-curve-generate-report
+yield-curve-build-dashboard \
+  --curve-csv data/examples/example_zero_curve.csv \
+  --bonds-csv data/examples/portfolios/example_bond_portfolio.csv \
+  --liabilities-csv data/examples/liabilities/example_liability_cashflows.csv
+
+yield-curve-plot-results \
+  --curve-csv data/examples/example_zero_curve.csv \
+  --bonds-csv data/examples/portfolios/example_bond_portfolio.csv \
+  --liabilities-csv data/examples/liabilities/example_liability_cashflows.csv \
+  --publish-docs-figures
+
+yield-curve-generate-report \
+  --curve-csv data/examples/example_zero_curve.csv \
+  --bonds-csv data/examples/portfolios/example_bond_portfolio.csv \
+  --liabilities-csv data/examples/liabilities/example_liability_cashflows.csv
 ```
 
 The equivalent `python -m yield_curve_alm_engine.scripts.<script_name>` form can
@@ -345,6 +417,7 @@ The scripts generate CSV and PNG artifacts in `outputs/`:
 - `base_case_bonds.csv`
 - `base_case_liabilities.csv`
 - `base_case_summary.csv`
+- `base_case_shock_comparison.csv`
 - `stress_test_results.csv`
 - `bond_sensitivities.csv`
 - `key_rate_report.csv`
@@ -357,9 +430,24 @@ The scripts generate CSV and PNG artifacts in `outputs/`:
 - `key_rate_pv01.png`
 - `cashflow_gap.png`
 
+## Sample Outputs
+
+The repository includes curated sample outputs generated from the local example
+CSV workflow:
+
+- [docs/sample_alm_report.md](docs/sample_alm_report.md)
+- [docs/figures/curve_scenarios.png](docs/figures/curve_scenarios.png)
+- [docs/figures/surplus_by_scenario.png](docs/figures/surplus_by_scenario.png)
+- [docs/figures/key_rate_pv01.png](docs/figures/key_rate_pv01.png)
+- [docs/figures/cashflow_gap.png](docs/figures/cashflow_gap.png)
+
+![Surplus by scenario](docs/figures/surplus_by_scenario.png)
+
+![Key-rate PV01](docs/figures/key_rate_pv01.png)
+
 ## Limitations
 
-This is a stylized educational and research lab. It deliberately omits:
+This is a professional-style research prototype. It deliberately omits:
 
 - bootstrapping from traded instruments;
 - full market data management and production data quality controls;

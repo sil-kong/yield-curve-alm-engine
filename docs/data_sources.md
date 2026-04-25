@@ -90,10 +90,27 @@ Internet access is only needed when refreshing the ECB CSV. Once the CSV has
 been fetched, valuation, stress testing, plotting and dashboard generation run
 offline from local files.
 
+Tests use local fixtures rather than live ECB calls. The valuation scripts never
+call the ECB API directly; only `yield-curve-fetch-ecb` refreshes public curve
+CSVs.
+
 Fetched market-curve files under `data/market_curves/` are ignored by Git. This
 keeps the repository small and avoids accidentally committing dated downloaded
 data while still making the workflow reproducible for a user who refreshes the
 CSV locally.
+
+## Why Public Curves Are Only Inputs
+
+Public curve dashboards provide observations. This engine adds portfolio- and
+liability-specific analytics on top of those observations:
+
+- portfolio-specific bond cash-flow valuation;
+- liability present value;
+- asset-liability surplus;
+- duration and convexity;
+- key-rate PV01;
+- deterministic surplus stress testing;
+- Markdown report and figure generation.
 
 ## Limitations
 

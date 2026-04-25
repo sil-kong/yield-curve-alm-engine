@@ -2,9 +2,10 @@
 
 ## Project Scope
 
-This repository is a stylized ALM and fixed-income risk laboratory. It is
+This repository is a transparent fixed-income ALM analytics prototype. It is
 designed to make the mechanics of yield-curve valuation, duration risk,
-key-rate sensitivities and surplus stress testing transparent and reproducible.
+key-rate sensitivities, curve-shape diagnostics and surplus stress testing
+reproducible from local inputs.
 
 The base case uses synthetic curve, asset and liability inputs. The project can
 also ingest public ECB spot yield curves into local CSV files, but valuation
@@ -26,6 +27,13 @@ the quoted maturity range use flat extrapolation at the nearest endpoint. This
 is intentionally simple and does not perform market bootstrapping. When an ECB
 CSV is used, the public ECB spot rates are treated directly as zero rates after
 percent-to-decimal conversion.
+
+## Curve-Shape Diagnostics
+
+Curve analytics include selected zero rates, discount factors, continuous
+forward rates, 2Y-10Y slope, 5Y-30Y slope and 2Y-5Y-10Y curvature. These
+diagnostics are simple reporting measures that help connect the curve input to
+valuation and surplus sensitivity. They are not a curve calibration framework.
 
 ## Bond Portfolio
 
@@ -137,5 +145,5 @@ The project deliberately omits:
 - accounting, taxation, expenses and liquidity constraints;
 - full calendars, settlement logic and day-count conventions.
 
-The project is best read as a transparent ALM mechanics lab suitable for
-learning, experimentation and portfolio demonstration.
+The project is best read as a professional-style research prototype suitable
+for learning, experimentation and portfolio demonstration.

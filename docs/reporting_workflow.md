@@ -17,7 +17,7 @@ After editable installation, the installed commands are:
 yield-curve-build-base
 yield-curve-run-stress
 yield-curve-build-dashboard
-yield-curve-plot-results
+yield-curve-plot-results --publish-docs-figures
 yield-curve-generate-report
 ```
 
@@ -46,9 +46,22 @@ yield-curve-run-stress \
   --bonds-csv data/examples/portfolios/example_bond_portfolio.csv \
   --liabilities-csv data/examples/liabilities/example_liability_cashflows.csv
 
-yield-curve-build-dashboard
-yield-curve-plot-results
-yield-curve-generate-report
+yield-curve-build-dashboard \
+  --curve-csv data/examples/example_zero_curve.csv \
+  --bonds-csv data/examples/portfolios/example_bond_portfolio.csv \
+  --liabilities-csv data/examples/liabilities/example_liability_cashflows.csv
+
+yield-curve-plot-results \
+  --curve-csv data/examples/example_zero_curve.csv \
+  --bonds-csv data/examples/portfolios/example_bond_portfolio.csv \
+  --liabilities-csv data/examples/liabilities/example_liability_cashflows.csv \
+  --publish-docs-figures
+
+yield-curve-generate-report \
+  --curve-csv data/examples/example_zero_curve.csv \
+  --bonds-csv data/examples/portfolios/example_bond_portfolio.csv \
+  --liabilities-csv data/examples/liabilities/example_liability_cashflows.csv \
+  --output docs/sample_alm_report.md
 ```
 
 ## Main Artifacts
@@ -66,6 +79,15 @@ The reporting commands write artifacts under `outputs/`:
 - `asset_liability_by_scenario.png`
 - `key_rate_pv01.png`
 - `cashflow_gap.png`
+
+The `outputs/` directory is for generated local artifacts and remains ignored
+except for `outputs/.gitkeep`. Curated examples for GitHub review live in:
+
+- `docs/sample_alm_report.md`
+- `docs/figures/curve_scenarios.png`
+- `docs/figures/surplus_by_scenario.png`
+- `docs/figures/key_rate_pv01.png`
+- `docs/figures/cashflow_gap.png`
 
 The generated figures are meant to support a recruiter or interview discussion:
 curve shocks, surplus by scenario, key-rate PV01 and asset/liability cash-flow
