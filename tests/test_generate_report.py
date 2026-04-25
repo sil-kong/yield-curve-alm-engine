@@ -32,6 +32,13 @@ def test_build_report_tables_and_markdown() -> None:
     markdown = build_report_markdown(tables, input_note="Synthetic test inputs.")
 
     assert {"summary", "curve_analytics", "stress_results", "shock_comparison"}.issubset(tables)
-    assert "# ALM Research Report" in markdown
-    assert "Surplus Shock Diagnostic" in markdown
-    assert "not production reporting" in markdown
+    assert "# ALM Report" in markdown
+    assert "## Executive Summary" in markdown
+    assert "## Curve Diagnostics" in markdown
+    assert "## Duration Approximation vs Full Revaluation" in markdown
+    assert "## Key-Rate PV01" in markdown
+    assert "## Cash-Flow Gap" in markdown
+    assert "forward_5y_10y" in markdown
+    assert "Largest absolute surplus PV01" in markdown
+    assert "Worst surplus stress" in markdown
+    assert "not a production market-data stack" in markdown
