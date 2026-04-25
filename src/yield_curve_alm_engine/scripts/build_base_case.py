@@ -10,7 +10,7 @@ from yield_curve_alm_engine.config import OUTPUTS
 from yield_curve_alm_engine.instruments.bonds import price_bond_portfolio
 from yield_curve_alm_engine.instruments.liabilities import liability_risk_metrics, liability_value_table
 from yield_curve_alm_engine.risk.immunization import duration_gap_diagnostic
-from yield_curve_alm_engine.risk.curve_analytics import compute_curve_analytics
+from yield_curve_alm_engine.curve.analytics import compute_curve_analytics
 from yield_curve_alm_engine.risk.surplus import (
     compute_balance_sheet,
     parallel_surplus_shock_comparison,

@@ -11,7 +11,7 @@ from yield_curve_alm_engine.config import OUTPUTS
 from yield_curve_alm_engine.curve.base_curve import ZeroCurve
 from yield_curve_alm_engine.curve.shocks import get_stress_scenarios
 from yield_curve_alm_engine.instruments.bonds import Bond
-from yield_curve_alm_engine.risk.curve_analytics import compute_curve_analytics
+from yield_curve_alm_engine.curve.analytics import compute_curve_analytics
 from yield_curve_alm_engine.risk.surplus import (
     parallel_surplus_shock_comparison,
     run_surplus_scenarios,
