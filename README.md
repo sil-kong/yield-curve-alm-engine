@@ -4,11 +4,13 @@ This repository is a stylized ALM and fixed-income risk laboratory. It is
 designed to make the mechanics of yield-curve valuation, duration risk,
 key-rate sensitivities and surplus stress testing transparent and reproducible.
 
-This repository is designed as a portfolio-quality educational project. It uses
-only synthetic, hard-coded inputs in its base case and does not ingest market
-data. The goal is to show clear Python structure and core ALM mechanics, not to
-present an industrial ALM engine, a regulatory model or a production valuation
-platform.
+This repository is designed as a portfolio-quality educational project. Its
+base case uses synthetic, hard-coded inputs, and it also includes an optional
+ECB public yield-curve fetcher that writes a normalized local CSV. The ALM
+valuation scripts consume local CSV files and do not depend on live internet.
+The goal is to show clear Python structure and core ALM mechanics, not to
+present an industrial ALM engine, a regulatory model, a production valuation
+platform or a market data system.
 
 ## Motivation
 
@@ -20,6 +22,7 @@ behind external data feeds or heavy frameworks.
 The current implementation can:
 
 - build a synthetic continuously compounded zero-coupon curve;
+- fetch public ECB euro area spot yield curves into reproducible local CSVs;
 - price a stylized portfolio of fixed-rate bullet bonds;
 - generate a synthetic liability cash-flow profile;
 - compute present value, duration and convexity metrics;
@@ -35,12 +38,12 @@ The current implementation can:
 - `src/` layout with editable installation through `pyproject.toml`.
 - Unit tests and a lightweight GitHub Actions test workflow.
 - Clear separation between curves, instruments, risk analytics and scripts.
-- Reproducible synthetic examples with optional CSV inputs.
+- Reproducible synthetic examples with optional CSV inputs and public ECB curve ingestion.
 - ALM diagnostics covering surplus, duration gap, key-rate PV01 and cash-flow matching.
 - Explicit documentation of assumptions, data provenance and limitations.
 
 See [docs/methodology.md](docs/methodology.md) for the modelling conventions and
-limitations.
+[docs/data_sources.md](docs/data_sources.md) for the public data-source workflow.
 
 ## Repository Structure
 
@@ -52,6 +55,7 @@ limitations.
 ├── LICENSE
 ├── README.md
 ├── docs/
+│   ├── data_sources.md
 │   └── methodology.md
 ├── pyproject.toml
 ├── requirements.txt
@@ -59,13 +63,20 @@ limitations.
 ├── data/
 │   └── examples/
 │       ├── example_bond_portfolio.csv
-│       └── example_zero_curve.csv
+│       ├── example_zero_curve.csv
+│       ├── liabilities/
+│       │   └── example_liability_cashflows.csv
+│       └── portfolios/
+│           └── example_bond_portfolio.csv
 ├── outputs/
 │   └── .gitkeep
 └── src/
     └── yield_curve_alm_engine
         ├── __init__.py
         ├── config.py
+        ├── data
+        │   ├── __init__.py
+        │   └── ecb.py
         ├── loaders.py
         ├── curve
         │   ├── __init__.py
@@ -87,6 +98,7 @@ limitations.
             ├── __init__.py
             ├── build_alm_dashboard.py
             ├── build_base_case.py
+            ├── fetch_ecb_curve.py
             ├── run_stress_tests.py
             └── plot_results.py
 └── tests/
@@ -94,6 +106,7 @@ limitations.
     ├── test_bonds.py
     ├── test_cashflow_matching.py
     ├── test_curve.py
+    ├── test_ecb_parser.py
     ├── test_immunization.py
     ├── test_key_rate.py
     ├── test_loaders.py
@@ -111,13 +124,18 @@ The base case uses internal synthetic data only:
 - liabilities: synthetic annual cash flows generated in
   `src/yield_curve_alm_engine/instruments/liabilities.py`.
 
-There is no Bloomberg, FRED, EIOPA, exchange, broker, accounting system or
-actuarial data ingestion in the current version. The numbers are intentionally
-illustrative and should not be interpreted as market observations.
+The optional ECB fetcher downloads public euro area yield-curve spot rates and
+writes a local normalized CSV. This is the only live internet workflow in the
+project. The valuation scripts then consume the saved CSV through `--curve-csv`
+and can be run offline.
 
-The project can also read user-supplied CSV files for the zero curve and bond
-portfolio. Those files are treated as external scenario inputs, not validated
-market data.
+There is no Bloomberg, FRED, broker, accounting system or actuarial data
+ingestion. The project is not an EIOPA regulatory ALM implementation and does
+not provide a production market data platform.
+
+The project can also read user-supplied CSV files for the zero curve, bond
+portfolio and liability cash flows. Those files are treated as external
+scenario inputs, not automatically validated market or actuarial data.
 
 ## Financial Methodology
 
@@ -200,6 +218,36 @@ The `requirements.txt` file is retained as a minimal runtime dependency list,
 but editable installation through `pyproject.toml` is the preferred development
 workflow.
 
+## Using ECB Yield Curve Data
+
+The preferred public-curve workflow is to refresh the ECB curve into a local
+CSV, then run the ALM scripts against that saved file.
+
+```bash
+.venv/bin/python -m yield_curve_alm_engine.scripts.fetch_ecb_curve \
+  --curve-type aaa \
+  --date latest \
+  --output data/market_curves/ecb/ecb_aaa_spot_latest.csv
+
+.venv/bin/python -m yield_curve_alm_engine.scripts.build_base_case \
+  --curve-csv data/market_curves/ecb/ecb_aaa_spot_latest.csv \
+  --bonds-csv data/examples/portfolios/example_bond_portfolio.csv \
+  --liabilities-csv data/examples/liabilities/example_liability_cashflows.csv
+```
+
+Supported curve types are:
+
+| `--curve-type` | ECB issuer universe | Curve name |
+| --- | --- | --- |
+| `aaa` | AAA-rated euro area central government bonds | `ecb_aaa_spot` |
+| `all` | all euro area central government bond ratings | `ecb_all_spot` |
+
+ECB observations are percent per annum and are converted to decimal zero rates
+in the normalized CSV. Internet access is only required when refreshing the ECB
+CSV. Once fetched, the ALM engine runs from local files.
+
+See [docs/data_sources.md](docs/data_sources.md) for details and limitations.
+
 ## User CSV Inputs
 
 The scripts can use the built-in synthetic inputs or user-provided CSV files.
@@ -208,11 +256,13 @@ Example files are provided in `data/examples/`.
 ```bash
 .venv/bin/python -m yield_curve_alm_engine.scripts.build_base_case \
   --curve-csv data/examples/example_zero_curve.csv \
-  --bonds-csv data/examples/example_bond_portfolio.csv
+  --bonds-csv data/examples/portfolios/example_bond_portfolio.csv \
+  --liabilities-csv data/examples/liabilities/example_liability_cashflows.csv
 
 .venv/bin/python -m yield_curve_alm_engine.scripts.run_stress_tests \
   --curve-csv data/examples/example_zero_curve.csv \
-  --bonds-csv data/examples/example_bond_portfolio.csv
+  --bonds-csv data/examples/portfolios/example_bond_portfolio.csv \
+  --liabilities-csv data/examples/liabilities/example_liability_cashflows.csv
 ```
 
 Expected zero-curve CSV columns:
@@ -231,6 +281,13 @@ Expected bond portfolio CSV columns:
 | `coupon_rate` | annual coupon rate in decimal form |
 | `maturity_years` | maturity in years |
 | `coupon_frequency` | integer number of coupon payments per year |
+
+Expected liability CSV columns:
+
+| column | description |
+| --- | --- |
+| `time_years` | future cash-flow time in years, strictly positive |
+| `cash_flow` | positive liability outflow |
 
 The CSV loader performs basic schema and numeric validation. It does not add
 market conventions such as day count, calendars, settlement dates or accrued
@@ -260,8 +317,8 @@ The scripts generate CSV and PNG artifacts in `outputs/`:
 
 This is a stylized educational and research lab. It deliberately omits:
 
-- market data ingestion;
 - bootstrapping from traded instruments;
+- full market data management and production data quality controls;
 - credit spreads and default risk;
 - inflation-linked or stochastic liabilities;
 - taxes, expenses, liquidity constraints and capital requirements;
@@ -276,7 +333,7 @@ real balance-sheet decisions.
 
 Good next steps include:
 
-- add user-supplied liability cash-flow CSV input;
+- add richer source metadata in generated dashboard reports;
 - compare built-in and user-input portfolios in one report;
 - support additional liability shapes and scenario sets;
 - broaden tests around script entry points and invalid CSV cases;

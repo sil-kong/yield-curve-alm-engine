@@ -6,8 +6,10 @@ This repository is a stylized ALM and fixed-income risk laboratory. It is
 designed to make the mechanics of yield-curve valuation, duration risk,
 key-rate sensitivities and surplus stress testing transparent and reproducible.
 
-The project uses synthetic curve, asset and liability inputs. It is not an
-industrial ALM system, a regulatory model, an actuarial production platform or a
+The base case uses synthetic curve, asset and liability inputs. The project can
+also ingest public ECB spot yield curves into local CSV files, but valuation
+scripts consume those CSVs offline. It is not an industrial ALM system, a
+regulatory model, an actuarial production platform, a market data platform or a
 source of investment advice.
 
 ## Yield Curve
@@ -21,7 +23,9 @@ DF(t) = exp(-r(t) * t)
 
 Rates between quoted maturity points are linearly interpolated. Rates outside
 the quoted maturity range use flat extrapolation at the nearest endpoint. This
-is intentionally simple and does not perform market bootstrapping.
+is intentionally simple and does not perform market bootstrapping. When an ECB
+CSV is used, the public ECB spot rates are treated directly as zero rates after
+percent-to-decimal conversion.
 
 ## Bond Portfolio
 
@@ -116,7 +120,8 @@ surplus are revalued. These stresses are intentionally simple and explainable.
 The project deliberately omits:
 
 - market curve bootstrapping from traded instruments;
-- real market data ingestion;
+- production market data ingestion or data quality controls;
+- EIOPA regulatory curve construction;
 - Solvency II or other regulatory capital calculations;
 - credit spreads, default risk and recovery assumptions;
 - stochastic interest-rate models;
