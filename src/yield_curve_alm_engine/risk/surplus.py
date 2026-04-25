@@ -130,6 +130,10 @@ def parallel_surplus_shock_comparison(
         shock_size=shock_size,
     )
     exact_surplus_change = float(shocked["surplus"]) - float(base["surplus"])
+    estimate_error = estimated_surplus_change - exact_surplus_change
+    relative_error = 0.0
+    if not np.isclose(exact_surplus_change, 0.0):
+        relative_error = estimate_error / abs(exact_surplus_change)
 
     return {
         "parallel_shock_bps": shock_size * 10_000.0,
@@ -144,8 +148,28 @@ def parallel_surplus_shock_comparison(
         - float(base["liability_value"]),
         "exact_surplus_change": exact_surplus_change,
         "estimated_surplus_change": estimated_surplus_change,
-        "estimate_error": estimated_surplus_change - exact_surplus_change,
+        "estimate_error": estimate_error,
+        "relative_error_vs_exact": relative_error,
     }
+
+
+def parallel_surplus_shock_comparisons(
+    bonds: list[Bond],
+    liabilities: pd.DataFrame,
+    curve: ZeroCurve,
+    shock_sizes: tuple[float, ...] = (0.0001, 0.01, -0.01),
+) -> pd.DataFrame:
+    """Return exact-vs-duration surplus comparisons for several parallel shocks."""
+    rows = [
+        parallel_surplus_shock_comparison(
+            bonds=bonds,
+            liabilities=liabilities,
+            curve=curve,
+            shock_size=shock_size,
+        )
+        for shock_size in shock_sizes
+    ]
+    return pd.DataFrame(rows)
 
 
 def compare_bond_sensitivities(
