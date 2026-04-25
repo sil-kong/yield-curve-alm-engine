@@ -9,8 +9,8 @@ base case uses synthetic, hard-coded inputs, and it also includes an optional
 ECB public yield-curve fetcher that writes a normalized local CSV. The ALM
 valuation scripts consume local CSV files and do not depend on live internet.
 The goal is to show clear Python structure and core ALM mechanics, not to
-present an industrial ALM engine, a regulatory model, a production valuation
-platform or a market data system.
+present an industrial ALM engine, an EIOPA-style regulatory implementation, a
+production valuation platform or a market data system.
 
 ## Motivation
 
@@ -30,7 +30,7 @@ The current implementation can:
 - compare asset and liability cash-flow timing gaps;
 - revalue assets and liabilities under deterministic rate shocks;
 - compare balance-sheet surplus across scenarios;
-- produce a compact ALM dashboard export;
+- produce compact ALM dashboard and Markdown report exports;
 - export simple CSV reports and matplotlib charts.
 
 ## CV / Portfolio Highlights
@@ -40,10 +40,13 @@ The current implementation can:
 - Clear separation between curves, instruments, risk analytics and scripts.
 - Reproducible synthetic examples with optional CSV inputs and public ECB curve ingestion.
 - ALM diagnostics covering surplus, duration gap, key-rate PV01 and cash-flow matching.
+- Installable command-line entry points plus `python -m` alternatives.
 - Explicit documentation of assumptions, data provenance and limitations.
 
 See [docs/methodology.md](docs/methodology.md) for the modelling conventions and
 [docs/data_sources.md](docs/data_sources.md) for the public data-source workflow.
+See [docs/reporting_workflow.md](docs/reporting_workflow.md) for the report and
+figures workflow.
 
 ## Repository Structure
 
@@ -56,7 +59,8 @@ See [docs/methodology.md](docs/methodology.md) for the modelling conventions and
 ├── README.md
 ├── docs/
 │   ├── data_sources.md
-│   └── methodology.md
+│   ├── methodology.md
+│   └── reporting_workflow.md
 ├── pyproject.toml
 ├── requirements.txt
 ├── .gitignore
@@ -89,6 +93,7 @@ See [docs/methodology.md](docs/methodology.md) for the modelling conventions and
         ├── risk
         │   ├── __init__.py
         │   ├── cashflow_matching.py
+        │   ├── curve_analytics.py
         │   ├── duration_convexity.py
         │   ├── immunization.py
         │   ├── key_rate.py
@@ -99,14 +104,18 @@ See [docs/methodology.md](docs/methodology.md) for the modelling conventions and
             ├── build_alm_dashboard.py
             ├── build_base_case.py
             ├── fetch_ecb_curve.py
+            ├── generate_report.py
             ├── run_stress_tests.py
             └── plot_results.py
 └── tests/
     ├── test_alm_dashboard.py
+    ├── test_cli_parsing.py
     ├── test_bonds.py
     ├── test_cashflow_matching.py
     ├── test_curve.py
+    ├── test_curve_analytics.py
     ├── test_ecb_parser.py
+    ├── test_generate_report.py
     ├── test_immunization.py
     ├── test_key_rate.py
     ├── test_loaders.py
@@ -131,7 +140,7 @@ and can be run offline.
 
 There is no Bloomberg, FRED, broker, accounting system or actuarial data
 ingestion. The project is not an EIOPA regulatory ALM implementation and does
-not provide a production market data platform.
+not provide a market data management stack.
 
 The project can also read user-supplied CSV files for the zero curve, bond
 portfolio and liability cash flows. Those files are treated as external
@@ -212,11 +221,35 @@ python3 -m venv .venv
 .venv/bin/python -m yield_curve_alm_engine.scripts.run_stress_tests
 .venv/bin/python -m yield_curve_alm_engine.scripts.build_alm_dashboard
 .venv/bin/python -m yield_curve_alm_engine.scripts.plot_results
+.venv/bin/python -m yield_curve_alm_engine.scripts.generate_report
 ```
 
 The `requirements.txt` file is retained as a minimal runtime dependency list,
 but editable installation through `pyproject.toml` is the preferred development
 workflow.
+
+After editable installation, these console commands are also available:
+
+```bash
+yield-curve-build-base --help
+yield-curve-run-stress --help
+yield-curve-build-dashboard --help
+yield-curve-plot-results --help
+yield-curve-fetch-ecb --help
+yield-curve-generate-report --help
+```
+
+The module form remains supported for users who prefer not to rely on installed
+commands:
+
+```bash
+python -m yield_curve_alm_engine.scripts.build_base_case
+python -m yield_curve_alm_engine.scripts.run_stress_tests
+python -m yield_curve_alm_engine.scripts.build_alm_dashboard
+python -m yield_curve_alm_engine.scripts.plot_results
+python -m yield_curve_alm_engine.scripts.fetch_ecb_curve --help
+python -m yield_curve_alm_engine.scripts.generate_report
+```
 
 ## Using ECB Yield Curve Data
 
@@ -224,12 +257,12 @@ The preferred public-curve workflow is to refresh the ECB curve into a local
 CSV, then run the ALM scripts against that saved file.
 
 ```bash
-.venv/bin/python -m yield_curve_alm_engine.scripts.fetch_ecb_curve \
+yield-curve-fetch-ecb \
   --curve-type aaa \
   --date latest \
   --output data/market_curves/ecb/ecb_aaa_spot_latest.csv
 
-.venv/bin/python -m yield_curve_alm_engine.scripts.build_base_case \
+yield-curve-build-base \
   --curve-csv data/market_curves/ecb/ecb_aaa_spot_latest.csv \
   --bonds-csv data/examples/portfolios/example_bond_portfolio.csv \
   --liabilities-csv data/examples/liabilities/example_liability_cashflows.csv
@@ -254,16 +287,23 @@ The scripts can use the built-in synthetic inputs or user-provided CSV files.
 Example files are provided in `data/examples/`.
 
 ```bash
-.venv/bin/python -m yield_curve_alm_engine.scripts.build_base_case \
+yield-curve-build-base \
   --curve-csv data/examples/example_zero_curve.csv \
   --bonds-csv data/examples/portfolios/example_bond_portfolio.csv \
   --liabilities-csv data/examples/liabilities/example_liability_cashflows.csv
 
-.venv/bin/python -m yield_curve_alm_engine.scripts.run_stress_tests \
+yield-curve-run-stress \
   --curve-csv data/examples/example_zero_curve.csv \
   --bonds-csv data/examples/portfolios/example_bond_portfolio.csv \
   --liabilities-csv data/examples/liabilities/example_liability_cashflows.csv
+
+yield-curve-build-dashboard
+yield-curve-plot-results
+yield-curve-generate-report
 ```
+
+The equivalent `python -m yield_curve_alm_engine.scripts.<script_name>` form can
+be used for every command above.
 
 Expected zero-curve CSV columns:
 
@@ -299,6 +339,8 @@ The scripts generate CSV and PNG artifacts in `outputs/`:
 
 - `alm_dashboard_summary.csv`
 - `alm_dashboard.md`
+- `alm_report.md`
+- `base_case_curve_analytics.csv`
 - `base_curve.csv`
 - `base_case_bonds.csv`
 - `base_case_liabilities.csv`
@@ -307,6 +349,8 @@ The scripts generate CSV and PNG artifacts in `outputs/`:
 - `bond_sensitivities.csv`
 - `key_rate_report.csv`
 - `cashflow_gap_report.csv`
+- `report_curve_analytics.csv`
+- `report_shock_comparison.csv`
 - `curve_scenarios.png`
 - `surplus_by_scenario.png`
 - `asset_liability_by_scenario.png`
@@ -322,7 +366,7 @@ This is a stylized educational and research lab. It deliberately omits:
 - credit spreads and default risk;
 - inflation-linked or stochastic liabilities;
 - taxes, expenses, liquidity constraints and capital requirements;
-- production-grade day count conventions, calendars and accrued interest;
+- full day count conventions, calendars and accrued interest;
 - stochastic interest-rate models.
 
 The goal is conceptual clarity, reproducible examples and readable engineering.
@@ -337,4 +381,4 @@ Good next steps include:
 - compare built-in and user-input portfolios in one report;
 - support additional liability shapes and scenario sets;
 - broaden tests around script entry points and invalid CSV cases;
-- add a small command-line wrapper for common workflows.
+- add optional stochastic-rate examples while preserving the deterministic workflow.

@@ -166,7 +166,7 @@ def build_report_markdown(
             "",
             "- The model uses stylized fixed-rate bullet assets and simplified liability cash flows.",
             "- ECB curves, when used, are public spot-rate inputs normalized into local CSV files.",
-            "- The workflow is not a regulatory valuation system, a trading system or a production market data platform.",
+            "- The workflow is not a regulatory valuation system, a trading system or a market data management stack.",
             "",
             "## Related Outputs",
             "",

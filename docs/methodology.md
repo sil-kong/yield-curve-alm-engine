@@ -8,9 +8,9 @@ key-rate sensitivities and surplus stress testing transparent and reproducible.
 
 The base case uses synthetic curve, asset and liability inputs. The project can
 also ingest public ECB spot yield curves into local CSV files, but valuation
-scripts consume those CSVs offline. It is not an industrial ALM system, a
-regulatory model, an actuarial production platform, a market data platform or a
-source of investment advice.
+scripts consume those CSVs offline. It is not an industrial ALM system, an
+EIOPA-style regulatory implementation, an actuarial production platform, a
+market data system or a source of investment advice.
 
 ## Yield Curve
 
@@ -115,6 +115,13 @@ The scenario module includes deterministic curve stresses:
 Each scenario returns a new zero-curve object, then assets, liabilities and
 surplus are revalued. These stresses are intentionally simple and explainable.
 
+## Reporting
+
+The reporting scripts export local CSV, PNG and Markdown artifacts. They are
+intended to make valuation, duration, convexity, key-rate PV01, cash-flow gaps
+and surplus stress testing reproducible and reviewable. They are not production
+reporting or regulatory reporting tools.
+
 ## Limitations
 
 The project deliberately omits:
@@ -128,7 +135,7 @@ The project deliberately omits:
 - realistic actuarial liability modelling;
 - inflation-linked liabilities;
 - accounting, taxation, expenses and liquidity constraints;
-- production-grade calendars, settlement logic and day-count conventions.
+- full calendars, settlement logic and day-count conventions.
 
 The project is best read as a transparent ALM mechanics lab suitable for
 learning, experimentation and portfolio demonstration.

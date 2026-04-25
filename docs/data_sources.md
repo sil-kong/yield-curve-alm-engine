@@ -62,7 +62,7 @@ decimal rates by dividing by 100 before writing `zero_rate`.
 Fetch the latest AAA spot curve into a local ignored data directory:
 
 ```bash
-.venv/bin/python -m yield_curve_alm_engine.scripts.fetch_ecb_curve \
+yield-curve-fetch-ecb \
   --curve-type aaa \
   --date latest \
   --output data/market_curves/ecb/ecb_aaa_spot_latest.csv
@@ -71,7 +71,7 @@ Fetch the latest AAA spot curve into a local ignored data directory:
 Then run the ALM base case from local files:
 
 ```bash
-.venv/bin/python -m yield_curve_alm_engine.scripts.build_base_case \
+yield-curve-build-base \
   --curve-csv data/market_curves/ecb/ecb_aaa_spot_latest.csv \
   --bonds-csv data/examples/portfolios/example_bond_portfolio.csv \
   --liabilities-csv data/examples/liabilities/example_liability_cashflows.csv
@@ -79,6 +79,10 @@ Then run the ALM base case from local files:
 
 The same `--curve-csv`, `--bonds-csv` and `--liabilities-csv` arguments are
 available in the stress-test and dashboard scripts.
+
+The `python -m yield_curve_alm_engine.scripts.fetch_ecb_curve` and
+`python -m yield_curve_alm_engine.scripts.build_base_case` forms remain
+supported for users who do not want installed console commands.
 
 ## Reproducibility
 
@@ -93,7 +97,7 @@ CSV locally.
 
 ## Limitations
 
-This is public ECB data ingestion, not a production market data platform. The
+This is public ECB data ingestion, not a market data management stack. The
 project does not implement:
 
 - market data entitlement, lineage or approval workflows;
