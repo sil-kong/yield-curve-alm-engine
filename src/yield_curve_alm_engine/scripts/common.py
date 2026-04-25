@@ -9,8 +9,10 @@ import pandas as pd
 
 from yield_curve_alm_engine.curve.base_curve import ZeroCurve, create_base_zero_curve
 from yield_curve_alm_engine.instruments.bonds import Bond, build_sample_bond_portfolio
+from yield_curve_alm_engine.instruments.liabilities import create_stylized_liability_schedule
 from yield_curve_alm_engine.loaders import (
     load_bond_portfolio_from_csv,
+    load_liability_cashflows_from_csv,
     load_zero_curve_from_csv,
 )
 
@@ -29,6 +31,12 @@ def add_input_arguments(parser: argparse.ArgumentParser) -> None:
         default=None,
         help="Optional CSV bond portfolio input with fixed-rate bond columns.",
     )
+    parser.add_argument(
+        "--liabilities-csv",
+        type=Path,
+        default=None,
+        help="Optional CSV liability input with time_years and cash_flow columns.",
+    )
 
 
 def load_curve(curve_csv: Path | None) -> ZeroCurve:
@@ -43,6 +51,13 @@ def load_bonds(bonds_csv: Path | None) -> list[Bond]:
     if bonds_csv is None:
         return build_sample_bond_portfolio()
     return load_bond_portfolio_from_csv(bonds_csv)
+
+
+def load_liabilities(liabilities_csv: Path | None) -> pd.DataFrame:
+    """Load user liabilities if supplied, otherwise return the synthetic schedule."""
+    if liabilities_csv is None:
+        return create_stylized_liability_schedule()
+    return load_liability_cashflows_from_csv(liabilities_csv)
 
 
 def collect_asset_cash_flows(bonds: list[Bond]) -> pd.DataFrame:

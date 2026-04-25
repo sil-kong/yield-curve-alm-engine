@@ -9,10 +9,7 @@ import pandas as pd
 from yield_curve_alm_engine.config import OUTPUTS
 from yield_curve_alm_engine.curve.base_curve import ZeroCurve
 from yield_curve_alm_engine.instruments.bonds import Bond, price_bond_portfolio
-from yield_curve_alm_engine.instruments.liabilities import (
-    create_stylized_liability_schedule,
-    liability_risk_metrics,
-)
+from yield_curve_alm_engine.instruments.liabilities import liability_risk_metrics
 from yield_curve_alm_engine.risk.cashflow_matching import build_cashflow_gap_report
 from yield_curve_alm_engine.risk.immunization import (
     compute_duration_gap,
@@ -25,6 +22,7 @@ from yield_curve_alm_engine.scripts.common import (
     collect_asset_cash_flows,
     load_bonds,
     load_curve,
+    load_liabilities,
 )
 
 
@@ -212,7 +210,7 @@ def main() -> None:
     args = parse_args()
     curve = load_curve(args.curve_csv)
     bonds = load_bonds(args.bonds_csv)
-    liabilities = create_stylized_liability_schedule()
+    liabilities = load_liabilities(args.liabilities_csv)
 
     tables = build_dashboard_tables(curve, bonds, liabilities)
     markdown = build_dashboard_markdown(tables["summary"])

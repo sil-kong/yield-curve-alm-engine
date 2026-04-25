@@ -19,6 +19,7 @@ REQUIRED_BOND_COLUMNS = {
     "maturity_years",
     "coupon_frequency",
 }
+REQUIRED_LIABILITY_COLUMNS = {"time_years", "cash_flow"}
 
 
 def _read_csv(path: str | Path) -> pd.DataFrame:
@@ -133,3 +134,29 @@ def load_bond_portfolio_from_csv(path: str | Path) -> list[Bond]:
             raise ValueError(f"invalid bond data on CSV row {row_number}: {exc}") from exc
 
     return bonds
+
+
+def load_liability_cashflows_from_csv(path: str | Path) -> pd.DataFrame:
+    """Load liability cash flows from a CSV file.
+
+    Expected columns are:
+    - time_years
+    - cash_flow
+
+    Liability cash flows are positive future obligations in this project.
+    """
+    frame = _read_csv(path)
+    _validate_required_columns(frame, REQUIRED_LIABILITY_COLUMNS, "liability")
+
+    liability_frame = pd.DataFrame(
+        {
+            "time_years": _numeric_series(frame, "time_years", "liability"),
+            "cash_flow": _numeric_series(frame, "cash_flow", "liability"),
+        }
+    ).sort_values("time_years")
+
+    _require_positive(liability_frame["time_years"], "liability cash-flow times")
+    if (liability_frame["cash_flow"] < 0).any():
+        raise ValueError("liability cash flows must be positive obligations.")
+
+    return liability_frame.reset_index(drop=True)

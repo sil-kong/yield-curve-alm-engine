@@ -6,12 +6,16 @@ import argparse
 
 from yield_curve_alm_engine.config import OUTPUTS
 from yield_curve_alm_engine.curve.shocks import get_stress_scenarios
-from yield_curve_alm_engine.instruments.liabilities import create_stylized_liability_schedule
 from yield_curve_alm_engine.risk.surplus import (
     compare_bond_sensitivities,
     run_surplus_scenarios,
 )
-from yield_curve_alm_engine.scripts.common import add_input_arguments, load_bonds, load_curve
+from yield_curve_alm_engine.scripts.common import (
+    add_input_arguments,
+    load_bonds,
+    load_curve,
+    load_liabilities,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -24,7 +28,7 @@ def main() -> None:
     args = parse_args()
     base_curve = load_curve(args.curve_csv)
     bonds = load_bonds(args.bonds_csv)
-    liabilities = create_stylized_liability_schedule()
+    liabilities = load_liabilities(args.liabilities_csv)
     scenarios = get_stress_scenarios()
 
     stress_results = run_surplus_scenarios(

@@ -8,14 +8,15 @@ import pandas as pd
 
 from yield_curve_alm_engine.config import OUTPUTS
 from yield_curve_alm_engine.instruments.bonds import price_bond_portfolio
-from yield_curve_alm_engine.instruments.liabilities import (
-    create_stylized_liability_schedule,
-    liability_risk_metrics,
-    liability_value_table,
-)
+from yield_curve_alm_engine.instruments.liabilities import liability_risk_metrics, liability_value_table
 from yield_curve_alm_engine.risk.immunization import duration_gap_diagnostic
 from yield_curve_alm_engine.risk.surplus import compute_balance_sheet
-from yield_curve_alm_engine.scripts.common import add_input_arguments, load_bonds, load_curve
+from yield_curve_alm_engine.scripts.common import (
+    add_input_arguments,
+    load_bonds,
+    load_curve,
+    load_liabilities,
+)
 
 
 def _currency(value: float) -> str:
@@ -37,7 +38,7 @@ def main() -> None:
     args = parse_args()
     curve = load_curve(args.curve_csv)
     bonds = load_bonds(args.bonds_csv)
-    liabilities = create_stylized_liability_schedule()
+    liabilities = load_liabilities(args.liabilities_csv)
 
     curve_table = curve.to_frame()
     bond_table = price_bond_portfolio(bonds, curve)

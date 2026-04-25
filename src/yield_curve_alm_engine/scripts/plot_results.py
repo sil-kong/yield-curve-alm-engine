@@ -10,7 +10,6 @@ from yield_curve_alm_engine.config import OUTPUTS
 from yield_curve_alm_engine.curve.base_curve import ZeroCurve
 from yield_curve_alm_engine.curve.shocks import get_stress_scenarios
 from yield_curve_alm_engine.instruments.bonds import Bond
-from yield_curve_alm_engine.instruments.liabilities import create_stylized_liability_schedule
 from yield_curve_alm_engine.risk.cashflow_matching import build_cashflow_gap_report
 from yield_curve_alm_engine.risk.key_rate import compute_asset_liability_key_rate_report
 from yield_curve_alm_engine.risk.surplus import run_surplus_scenarios
@@ -19,6 +18,7 @@ from yield_curve_alm_engine.scripts.common import (
     collect_asset_cash_flows,
     load_bonds,
     load_curve,
+    load_liabilities,
 )
 
 
@@ -195,7 +195,7 @@ def main() -> None:
     args = parse_args()
     base_curve = load_curve(args.curve_csv)
     bonds = load_bonds(args.bonds_csv)
-    liabilities = create_stylized_liability_schedule()
+    liabilities = load_liabilities(args.liabilities_csv)
     asset_cash_flows = collect_asset_cash_flows(bonds)
     key_rate_report = compute_asset_liability_key_rate_report(
         asset_cash_flows,

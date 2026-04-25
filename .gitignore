@@ -22,6 +22,7 @@ dist/
 .vscode/
 
 # Local output artifacts
+data/market_curves/
 outputs/*.csv
 outputs/*.md
 outputs/*.png
