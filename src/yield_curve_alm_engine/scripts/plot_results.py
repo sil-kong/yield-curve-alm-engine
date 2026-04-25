@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
+import shutil
 
 import matplotlib.pyplot as plt
 
-from yield_curve_alm_engine.config import OUTPUTS
+from yield_curve_alm_engine.config import OUTPUTS, PROJECT_ROOT
 from yield_curve_alm_engine.curve.base_curve import ZeroCurve
 from yield_curve_alm_engine.curve.shocks import get_stress_scenarios
 from yield_curve_alm_engine.instruments.bonds import Bond
@@ -20,6 +22,14 @@ from yield_curve_alm_engine.scripts.common import (
     load_curve,
     load_liabilities,
 )
+
+DOCS_FIGURES = PROJECT_ROOT / "docs" / "figures"
+PUBLISHED_FIGURE_NAMES = [
+    "curve_scenarios.png",
+    "surplus_by_scenario.png",
+    "key_rate_pv01.png",
+    "cashflow_gap.png",
+]
 
 
 def plot_curve_scenarios(base_curve: ZeroCurve) -> None:
@@ -180,6 +190,27 @@ def plot_key_rate_pv01(key_rate_report) -> None:
     fig.savefig(OUTPUTS / "key_rate_pv01.png", dpi=150)
 
 
+def publish_docs_figures(
+    source_dir: Path = OUTPUTS,
+    target_dir: Path = DOCS_FIGURES,
+    figure_names: list[str] | None = None,
+) -> list[Path]:
+    """Copy selected generated PNG figures into docs/figures for portfolio review."""
+    names = figure_names or PUBLISHED_FIGURE_NAMES
+    target_dir.mkdir(parents=True, exist_ok=True)
+    published_paths = []
+
+    for figure_name in names:
+        source_path = source_dir / figure_name
+        if not source_path.exists():
+            raise FileNotFoundError(f"figure not found and cannot be published: {source_path}")
+        target_path = target_dir / figure_name
+        shutil.copy2(source_path, target_path)
+        published_paths.append(target_path)
+
+    return published_paths
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Plot ALM curve and surplus results.")
     add_input_arguments(parser)
@@ -187,6 +218,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--show",
         action="store_true",
         help="Display plots interactively after saving them.",
+    )
+    parser.add_argument(
+        "--publish-docs-figures",
+        action="store_true",
+        help="Copy selected generated figures into docs/figures for committed examples.",
     )
     return parser.parse_args(argv)
 
@@ -217,6 +253,10 @@ def main() -> None:
     plot_key_rate_pv01(key_rate_report)
 
     print(f"Saved plots to: {OUTPUTS}")
+    if args.publish_docs_figures:
+        published_paths = publish_docs_figures()
+        print(f"Published {len(published_paths)} docs figures to: {DOCS_FIGURES}")
+
     if args.show:
         plt.show()
     else:
