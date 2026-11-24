@@ -22,7 +22,7 @@ It converts public/local yield curves and local cash-flow inputs into reproducib
 
 ## Input Scope
 
-The report uses local CSV inputs where supplied. The valuation step runs offline from those files; live internet is only used by the separate ECB fetch command when refreshing curve CSVs.
+Inputs: curve from `data/examples/example_zero_curve.csv`; bond portfolio from `data/examples/portfolios/example_bond_portfolio.csv`; liabilities from `data/examples/liabilities/example_liability_cashflows.csv`. Valuation runs offline from local files.
 
 ## Curve Diagnostics
 
@@ -82,11 +82,11 @@ Worst surplus stress: `parallel_down_100bps`. Best surplus stress: `parallel_up_
 
 | key_maturity | asset_pv01 | liability_pv01 | surplus_pv01 |
 | --- | --- | --- | --- |
-| 10 | -1,008 | -1,989 | 981.166362 |
-| 20 | -990.405414 | -1,516 | 525.635621 |
-| 5 | -112.081632 | -392.009276 | 279.927644 |
-| 2 | -450.286029 | -175.831874 | -274.454155 |
-| 1 | -223.827161 | -67.951242 | -155.875919 |
+| 10 | -2,139 | -3,769 | 1,630 |
+| 20 | -1,709 | -2,973 | 1,265 |
+| 2 | -451.80611 | -189.139657 | -262.666452 |
+| 5 | -751.295636 | -936.160306 | 184.86467 |
+| 1 | -18.455485 | -33.589599 | 15.134113 |
 
 Largest absolute surplus PV01 is around 10 years.
 

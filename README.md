@@ -170,7 +170,10 @@ figures workflow.
     ├── test_key_rate.py
     ├── test_loaders.py
     ├── test_plot_results.py
-    └── test_surplus.py
+    ├── test_surplus.py
+    ├── test_validation_consistency.py
+    └── fixtures/
+        └── ecb_yc_sample.csv
 ```
 
 ## Data Provenance
@@ -211,6 +214,14 @@ Flat extrapolation is used outside the quoted maturity range.
 
 Curve analytics include discount factors, continuous forward rates, 2Y-10Y
 slope, 5Y-30Y slope and 2Y-5Y-10Y curvature.
+
+### Key-Rate PV01
+
+Each key rate (1Y, 2Y, 5Y, 10Y, 20Y and 30Y in the dashboard and report) is
+shocked by +1 bp with a piecewise-linear tent that falls to zero at the
+neighbouring key maturities and stays flat beyond the first and last keys. The
+tents sum to one at every maturity, so the key-rate PV01s add up to the
+parallel 1 bp PV01.
 
 ### Bond Pricing
 
@@ -336,7 +347,8 @@ Supported curve types are:
 | `all` | all euro area central government bond ratings | `ecb_all_spot` |
 
 ECB observations are percent per annum and are converted to decimal zero rates
-in the normalized CSV. Internet access is only required when refreshing the ECB
+in the normalized CSV. Each maturity is a separate ECB series, so the fetcher
+checks that every maturity was observed on the same date and stops otherwise. Internet access is only required when refreshing the ECB
 CSV. Once fetched, the ALM engine runs from local files.
 
 See [docs/data_sources.md](docs/data_sources.md) for details and limitations.
@@ -401,9 +413,23 @@ Expected liability CSV columns:
 | `time_years` | future cash-flow time in years, strictly positive |
 | `cash_flow` | positive liability outflow |
 
-The CSV loader performs basic schema and numeric validation. It does not add
-market conventions such as day count, calendars, settlement dates or accrued
-interest.
+The CSV loaders validate each column and report the offending CSV rows and
+values, for example `bond portfolio column 'maturity_years' must be a whole
+number of coupon periods (row 3: 2.25)`. The checks are:
+
+- required columns present (header whitespace is ignored) and at least one data row;
+- numeric, finite values in every numeric column;
+- strictly positive maturities, cash-flow times, face values and coupon frequencies;
+- unique curve maturities and unique bond names;
+- decimal rates: zero rates above 100% or coupon rates above 1.0 are rejected
+  as probable percentages;
+- integer coupon frequencies, and bond maturities that are a whole number of
+  coupon periods;
+- non-negative coupon rates and liability cash flows;
+- a single `curve_date` when the curve CSV carries one (ECB format).
+
+The loaders do not add market conventions such as day count, calendars,
+settlement dates or accrued interest.
 
 ## Example Outputs
 
@@ -468,5 +494,5 @@ Good next steps include:
 - add richer source metadata in generated dashboard reports;
 - compare built-in and user-input portfolios in one report;
 - support additional liability shapes and scenario sets;
-- broaden tests around script entry points and invalid CSV cases;
+- broaden tests around script entry points;
 - add optional stochastic-rate examples while preserving the deterministic workflow.
