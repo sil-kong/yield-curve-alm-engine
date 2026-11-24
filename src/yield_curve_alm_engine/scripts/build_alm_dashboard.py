@@ -15,7 +15,10 @@ from yield_curve_alm_engine.risk.immunization import (
     compute_duration_gap,
     estimate_parallel_surplus_impact,
 )
-from yield_curve_alm_engine.risk.key_rate import compute_asset_liability_key_rate_report
+from yield_curve_alm_engine.risk.key_rate import (
+    REPORT_KEY_MATURITIES,
+    compute_asset_liability_key_rate_report,
+)
 from yield_curve_alm_engine.risk.surplus import compute_balance_sheet
 from yield_curve_alm_engine.scripts.common import (
     add_input_arguments,
@@ -125,8 +128,7 @@ def build_dashboard_tables(
         asset_cash_flows=asset_cash_flows,
         liability_cash_flows=liabilities,
         curve=curve,
-        key_maturities=[1.0, 2.0, 5.0, 10.0, 20.0, 30.0],
-        width=2.0,
+        key_maturities=REPORT_KEY_MATURITIES,
     )
     cashflow_gap_report = build_cashflow_gap_report(
         asset_cash_flows=asset_cash_flows,

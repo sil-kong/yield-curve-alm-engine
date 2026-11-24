@@ -9,6 +9,7 @@ from yield_curve_alm_engine.curve.base_curve import ZeroCurve
 from yield_curve_alm_engine.risk.duration_convexity import present_value_from_cash_flows
 
 REQUIRED_CASH_FLOW_COLUMNS = {"time_years", "cash_flow"}
+REPORT_KEY_MATURITIES = [1.0, 2.0, 5.0, 10.0, 20.0, 30.0]
 
 
 def _validate_cash_flows(cash_flows: pd.DataFrame) -> pd.DataFrame:
@@ -41,22 +42,50 @@ def _format_key_rate_name(key_maturity: float, shock_size: float) -> str:
     return f"key_rate_{maturity_label}_{direction}_{shock_label}"
 
 
+def key_rate_weights(
+    maturities: np.ndarray,
+    key_maturities: list[float],
+    key_maturity: float,
+) -> np.ndarray:
+    """Return tent-basis weights of one key rate on the quoted curve maturities.
+
+    Each key rate is a piecewise-linear "tent" that equals 1 at its own key
+    maturity, falls linearly to 0 at the neighbouring key maturities and is
+    flat beyond the first and last keys. The weights of all key rates sum to 1
+    at every maturity, so the key-rate PV01s add up to the parallel PV01
+    (up to second-order terms).
+    """
+    keys = np.asarray(sorted(float(key) for key in key_maturities), dtype=float)
+    if keys.size == 0:
+        raise ValueError("key_maturities must not be empty.")
+    if np.any(keys <= 0):
+        raise ValueError("key maturities must be strictly positive.")
+    if np.any(np.diff(keys) <= 0):
+        raise ValueError("key maturities must be unique.")
+    matches = np.flatnonzero(np.isclose(keys, key_maturity))
+    if matches.size == 0:
+        raise ValueError("key_maturity must be one of key_maturities.")
+
+    unit = np.zeros(keys.size)
+    unit[matches[0]] = 1.0
+    return np.interp(np.asarray(maturities, dtype=float), keys, unit)
+
+
 def apply_key_rate_shock(
     curve: ZeroCurve,
     key_maturity: float,
     shock_size: float = 0.0001,
     width: float = 1.0,
     name: str | None = None,
+    key_maturities: list[float] | None = None,
 ) -> ZeroCurve:
-    """Return a curve with a local triangular zero-rate shock.
+    """Return a curve with a local zero-rate shock around ``key_maturity``.
 
-    The weight applied to each quoted maturity is:
-
-    ``max(1 - abs(maturity - key_maturity) / width, 0)``.
-
-    If the triangular shock does not touch any quoted point, the nearest curve
-    maturity receives the full shock. This keeps the diagnostic usable for a
-    small synthetic curve with sparse maturity points.
+    When ``key_maturities`` is supplied, the shock uses the additive tent basis
+    of :func:`key_rate_weights`. Otherwise it falls back to a standalone
+    triangular shock with weight ``max(1 - abs(maturity - key_maturity) / width, 0)``;
+    if that triangle does not touch any quoted point, the nearest curve
+    maturity receives the full shock.
     """
     if key_maturity <= 0:
         raise ValueError("key_maturity must be strictly positive.")
@@ -66,11 +95,13 @@ def apply_key_rate_shock(
         raise ValueError("shock_size must be finite.")
 
     maturities = np.asarray(curve.maturities, dtype=float)
-    weights = np.maximum(1.0 - np.abs(maturities - key_maturity) / width, 0.0)
-
-    if np.allclose(weights, 0.0):
-        nearest_index = int(np.argmin(np.abs(maturities - key_maturity)))
-        weights[nearest_index] = 1.0
+    if key_maturities is not None:
+        weights = key_rate_weights(maturities, key_maturities, key_maturity)
+    else:
+        weights = np.maximum(1.0 - np.abs(maturities - key_maturity) / width, 0.0)
+        if np.allclose(weights, 0.0):
+            nearest_index = int(np.argmin(np.abs(maturities - key_maturity)))
+            weights[nearest_index] = 1.0
 
     shock_name = name or _format_key_rate_name(key_maturity, shock_size)
     return curve.with_zero_rates(curve.zero_rates + shock_size * weights, name=shock_name)
@@ -81,13 +112,13 @@ def compute_key_rate_pv01(
     curve: ZeroCurve,
     key_maturities: list[float] | None = None,
     shock_size: float = 0.0001,
-    width: float = 1.0,
 ) -> pd.DataFrame:
     """Compute local PV01 and key-rate duration for generic cash flows.
 
     ``pv01`` is defined as ``shocked_pv - base_pv`` for a local +1 bp shock by
     default. Positive cash flows should therefore have negative PV01 values
-    when rates rise.
+    when rates rise. Key rates use the additive tent basis, so the ``pv01``
+    column sums to the parallel PV01 of the cash flows.
     """
     if shock_size == 0:
         raise ValueError("shock_size must be non-zero.")
@@ -102,7 +133,7 @@ def compute_key_rate_pv01(
             curve=curve,
             key_maturity=float(key_maturity),
             shock_size=shock_size,
-            width=width,
+            key_maturities=list(keys),
         )
         shocked_pv = present_value_from_cash_flows(
             frame["time_years"],
@@ -131,7 +162,6 @@ def compute_asset_liability_key_rate_report(
     curve: ZeroCurve,
     key_maturities: list[float] | None = None,
     shock_size: float = 0.0001,
-    width: float = 1.0,
 ) -> pd.DataFrame:
     """Compute asset, liability and surplus key-rate PV01 diagnostics."""
     asset_report = compute_key_rate_pv01(
@@ -139,14 +169,12 @@ def compute_asset_liability_key_rate_report(
         curve,
         key_maturities=key_maturities,
         shock_size=shock_size,
-        width=width,
     )
     liability_report = compute_key_rate_pv01(
         liability_cash_flows,
         curve,
         key_maturities=key_maturities,
         shock_size=shock_size,
-        width=width,
     )
 
     report = pd.DataFrame(

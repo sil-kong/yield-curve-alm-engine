@@ -79,9 +79,16 @@ available.
 
 ## Key-Rate Duration
 
-Key-rate diagnostics decompose sensitivity by maturity bucket. The
-implementation applies a local triangular shock around each key maturity and
-revalues the cash flows.
+Key-rate diagnostics decompose sensitivity by maturity bucket. Each key rate
+is shocked with a piecewise-linear tent: the weight is 1 at its key maturity,
+falls linearly to 0 at the neighbouring key maturities and is flat beyond the
+first and last keys. The cash flows are then revalued on the shocked curve.
+
+The tent weights of all key rates sum to 1 at every quoted maturity. Because
+the curve is linearly interpolated, they also sum to 1 at every cash-flow date,
+so the key-rate PV01s add up to the parallel PV01 (up to second-order terms).
+This makes the key-rate table a decomposition of the parallel risk rather than
+a set of overlapping or incomplete local shocks.
 
 For a +1 bp shock, PV01 is reported as:
 
@@ -92,7 +99,7 @@ pv01 = shocked PV - base PV
 Positive cash flows therefore usually have negative PV01 under an upward rate
 shock. Asset PV01, liability PV01 and surplus PV01 are reported separately.
 
-The triangular shock is a pedagogical approximation. It is not a replacement for
+The tent basis is a pedagogical approximation. It is not a replacement for
 curve risk systems with calibrated key-rate tenors, smooth basis functions or
 instrument-level market risk infrastructure.
 

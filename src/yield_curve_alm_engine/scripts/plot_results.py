@@ -13,7 +13,10 @@ from yield_curve_alm_engine.curve.base_curve import ZeroCurve
 from yield_curve_alm_engine.curve.shocks import get_stress_scenarios
 from yield_curve_alm_engine.instruments.bonds import Bond
 from yield_curve_alm_engine.risk.cashflow_matching import build_cashflow_gap_report
-from yield_curve_alm_engine.risk.key_rate import compute_asset_liability_key_rate_report
+from yield_curve_alm_engine.risk.key_rate import (
+    REPORT_KEY_MATURITIES,
+    compute_asset_liability_key_rate_report,
+)
 from yield_curve_alm_engine.risk.surplus import run_surplus_scenarios
 from yield_curve_alm_engine.scripts.common import (
     add_input_arguments,
@@ -237,8 +240,7 @@ def main() -> None:
         asset_cash_flows,
         liabilities,
         base_curve,
-        key_maturities=[1.0, 2.0, 5.0, 10.0, 20.0, 30.0],
-        width=2.0,
+        key_maturities=REPORT_KEY_MATURITIES,
     )
     cashflow_gap_report = build_cashflow_gap_report(
         asset_cash_flows,
