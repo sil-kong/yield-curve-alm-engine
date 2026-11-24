@@ -22,7 +22,9 @@ from yield_curve_alm_engine.risk.key_rate import (
 from yield_curve_alm_engine.risk.surplus import compute_balance_sheet
 from yield_curve_alm_engine.scripts.common import (
     add_input_arguments,
+    SYNTHETIC_INPUT_NOTE,
     collect_asset_cash_flows,
+    describe_inputs,
     load_bonds,
     load_curve,
     load_liabilities,
@@ -71,13 +73,13 @@ def build_dashboard_tables(
                 "metric": "asset_market_value",
                 "value": float(balance_sheet["asset_value"]),
                 "unit": "currency",
-                "interpretation": "Market value of the stylized fixed-rate bond portfolio.",
+                "interpretation": "Market value of the fixed-rate bond portfolio.",
             },
             {
                 "metric": "liability_present_value",
                 "value": float(balance_sheet["liability_value"]),
                 "unit": "currency",
-                "interpretation": "Present value of positive synthetic liability outflows.",
+                "interpretation": "Present value of positive liability outflows.",
             },
             {
                 "metric": "surplus",
@@ -148,7 +150,10 @@ def _summary_value(summary: pd.DataFrame, metric: str) -> float:
     return float(summary.loc[summary["metric"] == metric, "value"].iloc[0])
 
 
-def build_dashboard_markdown(summary: pd.DataFrame) -> str:
+def build_dashboard_markdown(
+    summary: pd.DataFrame,
+    input_note: str = SYNTHETIC_INPUT_NOTE,
+) -> str:
     """Build a short Markdown dashboard narrative."""
     metric_table = summary.copy()
     metric_table["value"] = metric_table["value"].map(lambda value: f"{value:,.4f}")
@@ -165,7 +170,7 @@ def build_dashboard_markdown(summary: pd.DataFrame) -> str:
         [
             "# ALM Dashboard",
             "",
-            "This dashboard is generated from synthetic curve, bond and liability inputs.",
+            input_note,
             "It is intended for transparent ALM mechanics, not production reporting.",
             "",
             "## Base Case",
@@ -188,7 +193,7 @@ def build_dashboard_markdown(summary: pd.DataFrame) -> str:
             "",
             "## Limitations",
             "",
-            "All inputs are synthetic. The report does not include market curve bootstrapping, "
+            "The report does not include market curve bootstrapping, "
             "credit risk, stochastic rates, actuarial modelling, accounting rules or regulatory capital.",
             "",
             "## Output Files",
@@ -215,7 +220,7 @@ def main() -> None:
     liabilities = load_liabilities(args.liabilities_csv)
 
     tables = build_dashboard_tables(curve, bonds, liabilities)
-    markdown = build_dashboard_markdown(tables["summary"])
+    markdown = build_dashboard_markdown(tables["summary"], input_note=describe_inputs(args))
 
     tables["summary"].to_csv(OUTPUTS / "alm_dashboard_summary.csv", index=False)
     tables["key_rate_report"].to_csv(OUTPUTS / "key_rate_report.csv", index=False)

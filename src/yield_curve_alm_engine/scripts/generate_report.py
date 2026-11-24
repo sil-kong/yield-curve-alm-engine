@@ -21,6 +21,7 @@ from yield_curve_alm_engine.risk.surplus import (
 from yield_curve_alm_engine.scripts.build_alm_dashboard import build_dashboard_tables
 from yield_curve_alm_engine.scripts.common import (
     add_input_arguments,
+    describe_inputs,
     load_bonds,
     load_curve,
     load_liabilities,
@@ -466,22 +467,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def _input_note(args: argparse.Namespace) -> str:
-    if args.curve_csv and "ecb" in str(args.curve_csv).lower():
-        return (
-            "The report uses an ECB/public yield-curve CSV plus local asset and "
-            "liability cash-flow inputs. Valuation and reporting run offline from "
-            "those local files."
-        )
-    if args.curve_csv or args.bonds_csv or args.liabilities_csv:
-        return (
-            "The report uses local CSV inputs where supplied. The valuation step "
-            "runs offline from those files; live internet is only used by the "
-            "separate ECB fetch command when refreshing curve CSVs."
-        )
-    return (
-        "The report uses the built-in synthetic fallback curve, bond portfolio "
-        "and liability schedule provided for reproducible examples."
-    )
+    return describe_inputs(args)
 
 
 def main() -> None:

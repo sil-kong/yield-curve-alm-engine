@@ -64,3 +64,47 @@ def collect_asset_cash_flows(bonds: list[Bond]) -> pd.DataFrame:
     """Collect bond cash flows into a generic asset cash-flow table."""
     frames = [bond.cash_flows().loc[:, ["time_years", "cash_flow"]] for bond in bonds]
     return pd.concat(frames, ignore_index=True)
+
+
+SYNTHETIC_INPUT_NOTE = (
+    "This output uses the built-in synthetic curve, bond portfolio and liability "
+    "schedule provided for reproducible examples."
+)
+
+
+def _curve_source(curve_csv: Path) -> str | None:
+    """Return the ``source`` recorded in a normalized curve CSV, if any."""
+    try:
+        sources = pd.read_csv(curve_csv, usecols=lambda column: column == "source")
+    except (OSError, ValueError):
+        return None
+    if "source" not in sources.columns or sources.empty:
+        return None
+    values = sources["source"].dropna().astype(str).unique()
+    return values[0] if len(values) == 1 else None
+
+
+def describe_inputs(args: argparse.Namespace) -> str:
+    """Describe which inputs a run used: local CSV files, ECB curve or synthetic data."""
+    inputs = {
+        "curve": args.curve_csv,
+        "bond portfolio": args.bonds_csv,
+        "liabilities": args.liabilities_csv,
+    }
+    supplied = [label for label, path in inputs.items() if path is not None]
+    if not supplied:
+        return SYNTHETIC_INPUT_NOTE
+
+    parts = []
+    for label in supplied:
+        path = inputs[label]
+        if label == "curve" and _curve_source(path) == "ECB":
+            parts.append(f"curve from an ECB public yield-curve CSV (`{path}`)")
+        else:
+            parts.append(f"{label} from `{path}`")
+    note = "Inputs: " + "; ".join(parts) + "."
+    synthetic = [label for label in inputs if label not in supplied]
+    if synthetic:
+        note += f" Built-in synthetic inputs are used for: {', '.join(synthetic)}."
+    note += " Valuation runs offline from local files."
+    return note
