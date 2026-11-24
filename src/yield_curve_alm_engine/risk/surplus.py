@@ -178,27 +178,27 @@ def compare_bond_sensitivities(
     scenarios: dict[str, Callable[[ZeroCurve], ZeroCurve]],
 ) -> pd.DataFrame:
     """Return bond-level price changes under each stress scenario."""
-    base_table = price_bond_portfolio(bonds, base_curve).set_index("bond_name")
+    base_table = price_bond_portfolio(bonds, base_curve)
     rows = []
 
     for scenario_name, scenario_function in scenarios.items():
         stressed_curve = scenario_function(base_curve)
-        shocked_table = price_bond_portfolio(bonds, stressed_curve).set_index("bond_name")
+        shocked_prices = [price_bond(bond, stressed_curve) for bond in bonds]
 
-        for bond_name, base_row in base_table.iterrows():
-            shocked_price = float(shocked_table.loc[bond_name, "price"])
-            base_price = float(base_row["price"])
+        # Match bonds by position, not by name: names are labels and may repeat.
+        for base_row, shocked_price in zip(base_table.itertuples(index=False), shocked_prices):
+            base_price = float(base_row.price)
             rows.append(
                 {
                     "scenario": scenario_name,
-                    "bond_name": bond_name,
+                    "bond_name": base_row.bond_name,
                     "base_price": base_price,
                     "shocked_price": shocked_price,
                     "price_change": shocked_price - base_price,
                     "price_change_pct": _change_pct(shocked_price, base_price),
-                    "macaulay_duration": float(base_row["macaulay_duration"]),
-                    "modified_duration": float(base_row["modified_duration"]),
-                    "convexity": float(base_row["convexity"]),
+                    "macaulay_duration": float(base_row.macaulay_duration),
+                    "modified_duration": float(base_row.modified_duration),
+                    "convexity": float(base_row.convexity),
                 }
             )
 
