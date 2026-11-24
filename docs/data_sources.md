@@ -57,6 +57,13 @@ The fetch script writes a normalized CSV with this schema:
 ECB observations are quoted in percent per annum. The fetcher converts them to
 decimal rates by dividing by 100 before writing `zero_rate`.
 
+Each maturity is downloaded as a separate ECB series. If one series has no
+observation on the requested or latest date, its own latest observation could
+come from an earlier day. The fetcher therefore checks that all maturities
+share one `curve_date` and stops with the dates per maturity otherwise; re-run
+with an explicit `--date` in that case. The curve CSV loader applies the same
+single-date check when a `curve_date` column is present.
+
 ## Usage
 
 Fetch the latest AAA spot curve into a local ignored data directory:

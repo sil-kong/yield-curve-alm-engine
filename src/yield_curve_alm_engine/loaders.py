@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable
-
 import numpy as np
 import pandas as pd
 
@@ -20,13 +18,25 @@ REQUIRED_BOND_COLUMNS = {
     "coupon_frequency",
 }
 REQUIRED_LIABILITY_COLUMNS = {"time_years", "cash_flow"}
+# Decimal rates above 100% almost always mean the file is in percent.
+MAX_ABS_ZERO_RATE = 1.0
 
 
-def _read_csv(path: str | Path) -> pd.DataFrame:
+MAX_REPORTED_ROWS = 5
+
+
+def _read_csv(path: str | Path, dataset_name: str) -> pd.DataFrame:
     csv_path = Path(path)
     if not csv_path.exists():
         raise FileNotFoundError(f"CSV file not found: {csv_path}")
-    return pd.read_csv(csv_path)
+    try:
+        frame = pd.read_csv(csv_path)
+    except pd.errors.EmptyDataError as exc:
+        raise ValueError(f"{dataset_name} CSV is empty: {csv_path}") from exc
+    frame.columns = [str(column).strip() for column in frame.columns]
+    if frame.empty:
+        raise ValueError(f"{dataset_name} CSV contains no data rows: {csv_path}")
+    return frame
 
 
 def _validate_required_columns(
@@ -44,18 +54,64 @@ def _validate_required_columns(
         )
 
 
+def _csv_rows(mask: np.ndarray) -> list[int]:
+    """Return 1-based CSV line numbers (header is line 1) where ``mask`` is true."""
+    return [int(position) + 2 for position in np.flatnonzero(mask)]
+
+
+def _raise_for_rows(
+    frame: pd.DataFrame,
+    column: str,
+    mask: pd.Series | np.ndarray,
+    dataset_name: str,
+    problem: str,
+) -> None:
+    """Raise a ValueError naming the column, rows and raw values that fail a check."""
+    mask = np.asarray(mask, dtype=bool)
+    if not mask.any():
+        return
+    rows = _csv_rows(mask)
+    raw_values = frame.loc[mask, column].tolist()
+    details = ", ".join(
+        f"row {row}: {value!r}"
+        for row, value in zip(rows[:MAX_REPORTED_ROWS], raw_values[:MAX_REPORTED_ROWS])
+    )
+    if len(rows) > MAX_REPORTED_ROWS:
+        details += f", ... ({len(rows)} rows in total)"
+    raise ValueError(f"{dataset_name} column '{column}' {problem} ({details}).")
+
+
 def _numeric_series(frame: pd.DataFrame, column: str, dataset_name: str) -> pd.Series:
-    values = pd.to_numeric(frame[column], errors="coerce")
-    if values.isna().any():
-        raise ValueError(f"{dataset_name} column '{column}' must contain numeric values.")
-    if not np.isfinite(values.to_numpy(dtype=float)).all():
-        raise ValueError(f"{dataset_name} column '{column}' must contain finite values.")
+    values = pd.to_numeric(frame[column], errors="coerce").astype(float)
+    _raise_for_rows(frame, column, values.isna(), dataset_name, "must contain numeric values")
+    _raise_for_rows(
+        frame, column, ~np.isfinite(values), dataset_name, "must contain finite values"
+    )
     return values
 
 
-def _require_positive(values: Iterable[float], label: str) -> None:
-    if np.any(np.asarray(list(values), dtype=float) <= 0):
-        raise ValueError(f"{label} must be strictly positive.")
+def _require_positive(
+    frame: pd.DataFrame,
+    values: pd.Series,
+    column: str,
+    dataset_name: str,
+) -> None:
+    _raise_for_rows(frame, column, values <= 0, dataset_name, "must be strictly positive")
+
+
+def _require_unique(
+    frame: pd.DataFrame,
+    values: pd.Series,
+    column: str,
+    dataset_name: str,
+) -> None:
+    _raise_for_rows(
+        frame,
+        column,
+        values.duplicated(keep=False),
+        dataset_name,
+        "must contain unique values",
+    )
 
 
 def load_zero_curve_from_csv(path: str | Path, name: str = "user_curve") -> ZeroCurve:
@@ -65,19 +121,31 @@ def load_zero_curve_from_csv(path: str | Path, name: str = "user_curve") -> Zero
     - maturity_years
     - zero_rate
     """
-    frame = _read_csv(path)
+    frame = _read_csv(path, "curve")
     _validate_required_columns(frame, REQUIRED_CURVE_COLUMNS, "curve")
 
-    curve_frame = pd.DataFrame(
-        {
-            "maturity_years": _numeric_series(frame, "maturity_years", "curve"),
-            "zero_rate": _numeric_series(frame, "zero_rate", "curve"),
-        }
-    ).sort_values("maturity_years")
+    maturities = _numeric_series(frame, "maturity_years", "curve")
+    zero_rates = _numeric_series(frame, "zero_rate", "curve")
+    _require_positive(frame, maturities, "maturity_years", "curve")
+    _require_unique(frame, maturities, "maturity_years", "curve")
+    _raise_for_rows(
+        frame,
+        "zero_rate",
+        zero_rates.abs() > MAX_ABS_ZERO_RATE,
+        "curve",
+        f"looks like a percentage, expected decimal rates with |rate| <= {MAX_ABS_ZERO_RATE}",
+    )
+    if "curve_date" in frame.columns:
+        curve_dates = frame["curve_date"].astype(str).str.strip().unique()
+        if len(curve_dates) > 1:
+            raise ValueError(
+                "curve CSV mixes several curve_date values "
+                f"({', '.join(sorted(curve_dates))}); a curve must use one observation date."
+            )
 
-    if curve_frame["maturity_years"].duplicated().any():
-        raise ValueError("curve maturities must be unique.")
-    _require_positive(curve_frame["maturity_years"], "curve maturities")
+    curve_frame = pd.DataFrame(
+        {"maturity_years": maturities, "zero_rate": zero_rates}
+    ).sort_values("maturity_years")
 
     return ZeroCurve(
         maturities=curve_frame["maturity_years"].to_numpy(dtype=float),
@@ -96,42 +164,61 @@ def load_bond_portfolio_from_csv(path: str | Path) -> list[Bond]:
     - maturity_years
     - coupon_frequency
     """
-    frame = _read_csv(path)
-    _validate_required_columns(frame, REQUIRED_BOND_COLUMNS, "bond portfolio")
+    frame = _read_csv(path, "bond portfolio")
+    dataset = "bond portfolio"
+    _validate_required_columns(frame, REQUIRED_BOND_COLUMNS, dataset)
 
     raw_names = frame["name"]
     names = raw_names.astype(str).str.strip()
-    if raw_names.isna().any() or (names == "").any():
-        raise ValueError("bond portfolio column 'name' must not contain blank values.")
+    _raise_for_rows(
+        frame, "name", raw_names.isna() | (names == ""), dataset, "must not contain blank values"
+    )
+    _require_unique(frame, names, "name", dataset)
 
-    face_values = _numeric_series(frame, "face_value", "bond portfolio")
-    coupon_rates = _numeric_series(frame, "coupon_rate", "bond portfolio")
-    maturities = _numeric_series(frame, "maturity_years", "bond portfolio")
-    coupon_frequencies = _numeric_series(frame, "coupon_frequency", "bond portfolio")
+    face_values = _numeric_series(frame, "face_value", dataset)
+    coupon_rates = _numeric_series(frame, "coupon_rate", dataset)
+    maturities = _numeric_series(frame, "maturity_years", dataset)
+    coupon_frequencies = _numeric_series(frame, "coupon_frequency", dataset)
 
-    _require_positive(face_values, "bond face values")
-    _require_positive(maturities, "bond maturities")
-    _require_positive(coupon_frequencies, "bond coupon frequencies")
+    _require_positive(frame, face_values, "face_value", dataset)
+    _require_positive(frame, maturities, "maturity_years", dataset)
+    _require_positive(frame, coupon_frequencies, "coupon_frequency", dataset)
+    _raise_for_rows(frame, "coupon_rate", coupon_rates < 0, dataset, "cannot be negative")
+    _raise_for_rows(
+        frame,
+        "coupon_rate",
+        coupon_rates > 1.0,
+        dataset,
+        "looks like a percentage, expected decimal rates such as 0.025",
+    )
+    _raise_for_rows(
+        frame,
+        "coupon_frequency",
+        ~np.isclose(coupon_frequencies, np.round(coupon_frequencies)),
+        dataset,
+        "must contain integer values",
+    )
+    periods = maturities * np.round(coupon_frequencies)
+    _raise_for_rows(
+        frame,
+        "maturity_years",
+        ~np.isclose(periods, np.round(periods)),
+        dataset,
+        "must be a whole number of coupon periods (maturity_years * coupon_frequency)",
+    )
 
-    if (coupon_rates < 0).any():
-        raise ValueError("bond coupon rates cannot be negative.")
-    if not np.allclose(coupon_frequencies, np.round(coupon_frequencies)):
-        raise ValueError("bond coupon frequencies must be integer values.")
-
-    bonds = []
-    for row_number, name in enumerate(names, start=2):
-        try:
-            bonds.append(
-                Bond(
-                    name=name,
-                    face_value=float(face_values.iloc[row_number - 2]),
-                    coupon_rate=float(coupon_rates.iloc[row_number - 2]),
-                    maturity_years=float(maturities.iloc[row_number - 2]),
-                    coupon_frequency=int(round(coupon_frequencies.iloc[row_number - 2])),
-                )
-            )
-        except ValueError as exc:
-            raise ValueError(f"invalid bond data on CSV row {row_number}: {exc}") from exc
+    bonds = [
+        Bond(
+            name=name,
+            face_value=float(face_value),
+            coupon_rate=float(coupon_rate),
+            maturity_years=float(maturity),
+            coupon_frequency=int(round(frequency)),
+        )
+        for name, face_value, coupon_rate, maturity, frequency in zip(
+            names, face_values, coupon_rates, maturities, coupon_frequencies
+        )
+    ]
 
     return bonds
 
@@ -145,18 +232,22 @@ def load_liability_cashflows_from_csv(path: str | Path) -> pd.DataFrame:
 
     Liability cash flows are positive future obligations in this project.
     """
-    frame = _read_csv(path)
+    frame = _read_csv(path, "liability")
     _validate_required_columns(frame, REQUIRED_LIABILITY_COLUMNS, "liability")
 
-    liability_frame = pd.DataFrame(
-        {
-            "time_years": _numeric_series(frame, "time_years", "liability"),
-            "cash_flow": _numeric_series(frame, "cash_flow", "liability"),
-        }
-    ).sort_values("time_years")
+    times = _numeric_series(frame, "time_years", "liability")
+    cash_flows = _numeric_series(frame, "cash_flow", "liability")
+    _require_positive(frame, times, "time_years", "liability")
+    _raise_for_rows(
+        frame,
+        "cash_flow",
+        cash_flows < 0,
+        "liability",
+        "must contain positive obligations (no negative values)",
+    )
 
-    _require_positive(liability_frame["time_years"], "liability cash-flow times")
-    if (liability_frame["cash_flow"] < 0).any():
-        raise ValueError("liability cash flows must be positive obligations.")
+    liability_frame = pd.DataFrame(
+        {"time_years": times, "cash_flow": cash_flows}
+    ).sort_values("time_years", kind="stable")
 
     return liability_frame.reset_index(drop=True)

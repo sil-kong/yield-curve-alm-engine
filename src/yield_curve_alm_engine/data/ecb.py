@@ -198,7 +198,30 @@ def fetch_ecb_curve(
         )
 
     curve = pd.concat(rows, ignore_index=True)
+    check_single_curve_date(curve)
     return curve.loc[:, NORMALIZED_COLUMNS].sort_values("maturity_years").reset_index(drop=True)
+
+
+def check_single_curve_date(curve: pd.DataFrame) -> None:
+    """Reject a curve whose maturities were observed on different dates.
+
+    Each maturity is downloaded as a separate ECB series. If one series has no
+    observation on the latest date (publication lag, missing value), its own
+    latest observation would silently come from an earlier day and the curve
+    would mix several dates.
+    """
+    curve_dates = sorted(curve["curve_date"].astype(str).unique())
+    if len(curve_dates) > 1:
+        by_date = (
+            curve.groupby(curve["curve_date"].astype(str))["maturity_years"]
+            .apply(lambda values: ", ".join(f"{value:g}Y" for value in sorted(values)))
+            .to_dict()
+        )
+        details = "; ".join(f"{date}: {maturities}" for date, maturities in by_date.items())
+        raise RuntimeError(
+            "ECB maturities were observed on different dates "
+            f"({details}). Re-run with an explicit --date so every maturity uses the same curve."
+        )
 
 
 def write_ecb_curve_csv(curve: pd.DataFrame, output_path: str | Path) -> Path:
